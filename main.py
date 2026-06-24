@@ -1,0 +1,268 @@
+# =============================================================================
+# main.py — AI Pulse Project
+# =============================================================================
+#
+# PROJECT:  AI Pulse – GenAI Industry Trends Warehouse
+# AUTHOR:   AI Pulse Data Engineering Team
+# WEEK:     1 — Foundation + Architecture
+#
+# PURPOSE:
+#   This is the ENTRY POINT for the entire data pipeline.
+#   It orchestrates the following steps in sequence:
+#
+#   Step 1: Validate configuration (API key, DB URL)
+#   Step 2: Test database connection
+#   Step 3: Initialize the database schema (create table if not exists)
+#   Step 4: Fetch AI news articles from GNews API
+#   Step 5: Load articles into PostgreSQL raw layer
+#   Step 6: Report pipeline run summary
+#
+# CONCEPT — Orchestrator Pattern:
+#   main.py does NOT contain any business logic.
+#   It imports functions from other modules and calls them in order.
+#   This is the "Orchestrator" design pattern:
+#     - ingestion/gnews_client.py → knows how to fetch data
+#     - database/warehouse.py     → knows how to save data
+#     - main.py                   → coordinates the two
+#
+#   This separation makes it easy to:
+#     - Replace GNews with Reddit in Week 3 (just swap the ingestion module)
+#     - Add more steps (transform, validate) between fetch and load
+#     - Schedule this file with cron or Airflow in later weeks
+#
+# HOW TO RUN:
+#   From the project root:
+#   python main.py
+#
+# EXPECTED OUTPUT (when working):
+#   2026-06-24 18:30:01 | main | INFO     | =============================
+#   2026-06-24 18:30:01 | main | INFO     | AI Pulse Data Pipeline — Week 1
+#   2026-06-24 18:30:01 | main | INFO     | =============================
+#   2026-06-24 18:30:02 | main | INFO     | ✓ Config validated
+#   2026-06-24 18:30:03 | main | INFO     | ✓ Database connection healthy
+#   2026-06-24 18:30:03 | main | INFO     | ✓ Schema initialized
+#   2026-06-24 18:30:05 | main | INFO     | ✓ Fetched 10 articles from GNews
+#   2026-06-24 18:30:06 | main | INFO     | ✓ Inserted 10 new records (0 duplicates)
+#   2026-06-24 18:30:06 | main | INFO     | ✓ Total records in warehouse: 10
+#
+# =============================================================================
+
+import sys                      # For sys.exit() — cleanly exits with an error code
+from datetime import datetime, timezone  # For timing the pipeline run
+
+# --- Project modules ---
+# We import from our own modules using the package.module.function pattern
+from config.settings import validate_config
+from ingestion.gnews_client import fetch_ai_news
+from database.warehouse import (
+    create_db_engine,
+    initialize_database,
+    load_dataframe_to_warehouse,
+    get_record_count,
+    test_connection,
+)
+from utils.logger import get_logger
+
+# Create a logger for this module
+# __name__ = "main" when this file is run directly
+logger = get_logger(__name__)
+
+
+# =============================================================================
+# Pipeline Banner
+# =============================================================================
+
+BANNER = """
+╔══════════════════════════════════════════════════════════════╗
+║           AI PULSE — GenAI Industry Trends Warehouse         ║
+║                   Data Pipeline — Week 1                     ║
+║          GNews API → Python → Pandas → PostgreSQL           ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+
+
+# =============================================================================
+# Main Pipeline Function
+# =============================================================================
+
+def run_pipeline() -> None:
+    """
+    Execute the complete Week 1 data pipeline end-to-end.
+
+    Pipeline Steps:
+        1. Validate configuration
+        2. Establish database connection
+        3. Initialize database schema
+        4. Fetch news from GNews API
+        5. Load data into PostgreSQL warehouse
+        6. Report summary
+
+    This function raises SystemExit on fatal errors so the caller
+    (or a scheduler in later weeks) can detect pipeline failures.
+    """
+
+    # Record when the pipeline started (for reporting run duration)
+    pipeline_start = datetime.now(timezone.utc)
+
+    # Print the startup banner to console
+    print(BANNER)
+    logger.info("Pipeline execution started")
+
+    # =========================================================================
+    # STEP 1: Validate Configuration
+    # =========================================================================
+    # Before doing anything, check that required env vars are set.
+    # "Fail fast" — catch problems at startup, not halfway through.
+    # =========================================================================
+    logger.info("━" * 60)
+    logger.info("STEP 1/5 — Validating configuration")
+    logger.info("━" * 60)
+
+    try:
+        validate_config()
+        logger.info("✓ All required environment variables are present")
+    except ValueError as e:
+        logger.critical(f"Configuration error: {str(e)}")
+        logger.critical("Pipeline aborted. Fix your .env file and retry.")
+        sys.exit(1)  # Exit code 1 = error (0 = success in Unix conventions)
+
+    # =========================================================================
+    # STEP 2: Establish Database Connection
+    # =========================================================================
+    logger.info("━" * 60)
+    logger.info("STEP 2/5 — Connecting to PostgreSQL")
+    logger.info("━" * 60)
+
+    try:
+        # create_db_engine() builds the connection pool
+        engine = create_db_engine()
+    except Exception as e:
+        logger.critical(f"Cannot create database engine: {str(e)}")
+        sys.exit(1)
+
+    # test_connection() sends a SELECT 1 to verify the DB is reachable
+    if not test_connection(engine):
+        logger.critical("Cannot reach PostgreSQL. Pipeline aborted.")
+        logger.critical("Troubleshooting checklist:")
+        logger.critical("  1. Is PostgreSQL service running? (Check Services in Windows)")
+        logger.critical("  2. Is DATABASE_URL correct in your .env file?")
+        logger.critical("  3. Does the database 'ai_pulse_db' exist?")
+        logger.critical("     Run: psql -U postgres -c 'CREATE DATABASE ai_pulse_db;'")
+        sys.exit(1)
+
+    logger.info("✓ Successfully connected to PostgreSQL")
+
+    # =========================================================================
+    # STEP 3: Initialize Database Schema
+    # =========================================================================
+    # Creates the raw_ai_news table if it doesn't already exist.
+    # Safe to run on every pipeline execution (idempotent).
+    # =========================================================================
+    logger.info("━" * 60)
+    logger.info("STEP 3/5 — Initializing database schema")
+    logger.info("━" * 60)
+
+    try:
+        initialize_database(engine)
+        logger.info("✓ Table 'raw_ai_news' is ready")
+    except Exception as e:
+        logger.critical(f"Schema initialization failed: {str(e)}")
+        sys.exit(1)
+
+    # =========================================================================
+    # STEP 4: Fetch Data from GNews API
+    # =========================================================================
+    logger.info("━" * 60)
+    logger.info("STEP 4/5 — Fetching AI news from GNews API")
+    logger.info("━" * 60)
+
+    df = fetch_ai_news()
+
+    if df is None:
+        logger.error("Data fetch returned None. No data to load.")
+        logger.error("Possible causes:")
+        logger.error("  1. GNEWS_API_KEY is invalid or expired")
+        logger.error("  2. No articles matched the search query")
+        logger.error("  3. Network/connectivity issue")
+        logger.warning("Pipeline completing with 0 records loaded.")
+        _report_summary(pipeline_start, fetched=0, inserted=0, engine=engine)
+        return  # Exit gracefully (not sys.exit — this is not a fatal error)
+
+    logger.info(f"✓ Fetched {len(df)} articles from GNews API")
+
+    # Log a sample of what we fetched (first 3 titles)
+    logger.info("Sample articles fetched:")
+    for i, row in df.head(3).iterrows():
+        logger.info(f"  [{i+1}] {row['title'][:70]}...")
+
+    # =========================================================================
+    # STEP 5: Load Data into PostgreSQL
+    # =========================================================================
+    logger.info("━" * 60)
+    logger.info("STEP 5/5 — Loading data into PostgreSQL warehouse")
+    logger.info("━" * 60)
+
+    inserted = load_dataframe_to_warehouse(df, engine)
+
+    # =========================================================================
+    # STEP 6: Report Summary
+    # =========================================================================
+    _report_summary(pipeline_start, fetched=len(df), inserted=inserted, engine=engine)
+
+
+def _report_summary(
+    pipeline_start: datetime,
+    fetched: int,
+    inserted: int,
+    engine
+) -> None:
+    """
+    Log a formatted summary of the pipeline run.
+
+    Args:
+        pipeline_start: When the pipeline started (UTC datetime)
+        fetched:        Number of articles fetched from API
+        inserted:       Number of new records inserted to DB
+        engine:         DB engine for getting total record count
+    """
+    pipeline_end = datetime.now(timezone.utc)
+    duration_seconds = (pipeline_end - pipeline_start).total_seconds()
+
+    total_in_db = get_record_count(engine)
+    duplicates_skipped = fetched - inserted if fetched > 0 else 0
+
+    summary = f"""
+╔══════════════════════════════════════════════════════════════╗
+║                    PIPELINE RUN SUMMARY                      ║
+╠══════════════════════════════════════════════════════════════╣
+║  Status:           {"SUCCESS ✓" if inserted >= 0 else "FAILED ✗":<46} ║
+║  Run Duration:     {f"{duration_seconds:.2f}s":<46} ║
+║  Articles Fetched: {str(fetched):<46} ║
+║  New Records:      {str(inserted):<46} ║
+║  Duplicates Skip:  {str(duplicates_skipped):<46} ║
+║  Total in DB:      {str(total_in_db):<46} ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+    print(summary)
+    logger.info("Pipeline execution completed successfully")
+    logger.info(f"Duration: {duration_seconds:.2f}s | "
+               f"Fetched: {fetched} | "
+               f"Inserted: {inserted} | "
+               f"Total in DB: {total_in_db}")
+
+
+# =============================================================================
+# Entry Point Guard
+# =============================================================================
+# CONCEPT — if __name__ == "__main__":
+#   When Python runs a file directly (python main.py), it sets __name__ = "__main__".
+#   When a file is imported by another module, __name__ = the module name.
+#
+#   This guard ensures run_pipeline() only executes when YOU run the file,
+#   not when pytest or another module imports it.
+#
+#   Without this guard, importing from main.py would run the entire pipeline!
+# =============================================================================
+
+if __name__ == "__main__":
+    run_pipeline()

@@ -1,0 +1,4 @@
+# This file intentionally left empty.
+# It exists to keep the logs/ directory tracked by Git.
+# Git does not track empty directories, so we add this placeholder file.
+# The actual .log files inside this folder are excluded via .gitignore.

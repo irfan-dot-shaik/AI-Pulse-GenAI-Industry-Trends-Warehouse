@@ -1,0 +1,42 @@
+# =============================================================================
+# requirements.txt — AI Pulse Project
+# =============================================================================
+# PURPOSE: Lists every Python package this project depends on.
+#
+# HOW TO USE:
+#   pip install -r requirements.txt
+#
+# WHY PIN VERSIONS?
+#   Pinning versions (e.g., requests==2.31.0) ensures that anyone who clones
+#   this project gets the exact same package versions. This prevents
+#   "it works on my machine" bugs caused by version differences.
+# =============================================================================
+
+
+# --- HTTP Requests ---
+# Used to call the GNews API over the internet
+requests==2.31.0
+
+# --- Data Manipulation ---
+# Used to transform raw JSON API responses into structured DataFrames
+pandas==2.1.4
+
+# --- Database ORM ---
+# SQLAlchemy: Lets us define database tables as Python classes
+# and write database queries without raw SQL strings
+SQLAlchemy==2.0.25
+
+# --- PostgreSQL Driver ---
+# psycopg2-binary: The actual connector between Python and PostgreSQL
+# Without this, SQLAlchemy cannot talk to PostgreSQL
+psycopg2-binary==2.9.9
+
+# --- Environment Variables ---
+# python-dotenv: Reads the .env file and loads variables into os.environ
+# This is how we keep secrets out of the code
+python-dotenv==1.0.0
+
+# --- Testing ---
+# pytest: The standard Python testing framework
+# Used to write and run unit tests for our pipeline
+pytest==7.4.4

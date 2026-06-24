@@ -1,0 +1,163 @@
+# =============================================================================
+# config/settings.py — AI Pulse Project
+# =============================================================================
+#
+# PURPOSE:
+#   This is the single source of truth for ALL configuration in the project.
+#   Every setting, API parameter, and database URL lives here.
+#   No other file should read from os.environ directly.
+#
+# CONCEPT — Why Centralize Config?
+#   Imagine having 10 Python files, each reading environment variables.
+#   If you rename a variable, you'd need to update 10 files.
+#   By centralizing config here, you only change one file.
+#   This is called the "Single Source of Truth" principle.
+#
+# CONCEPT — Why Not Hardcode Values?
+#   BAD  (hardcoded):  API_KEY = "abc123xyz"
+#   GOOD (from env):   API_KEY = os.getenv("GNEWS_API_KEY")
+#
+#   Hardcoding secrets means they go into Git history forever.
+#   Even if you delete the line later, it still exists in commit history.
+#
+# FLOW:
+#   .env file → python-dotenv loads it → os.environ → this file reads it
+#
+# =============================================================================
+
+import os                          # Built-in Python module: access environment variables
+from dotenv import load_dotenv     # Third-party: reads .env file into os.environ
+from pathlib import Path           # Built-in: object-oriented way to handle file paths
+
+# ---------------------------------------------------------------------------
+# Load Environment Variables
+# ---------------------------------------------------------------------------
+# load_dotenv() searches for a .env file starting from the current directory
+# and moving up the directory tree. It loads key=value pairs into os.environ.
+#
+# Path(__file__): absolute path to THIS file (settings.py)
+# .parent:        the config/ folder
+# .parent:        the project root folder (AI.NEWS/)
+# / ".env":       the .env file in the project root
+#
+# We use dotenv_path to explicitly tell load_dotenv where to find .env,
+# making the code work regardless of which directory you run it from.
+# ---------------------------------------------------------------------------
+
+# Get the absolute path of the project root directory
+PROJECT_ROOT = Path(__file__).parent.parent
+
+# Load the .env file from the project root
+load_dotenv(dotenv_path=PROJECT_ROOT / ".env")
+
+
+# =============================================================================
+# GNews API Configuration
+# =============================================================================
+# GNews is the data source for this pipeline.
+# All API-related settings are grouped together here.
+# =============================================================================
+
+# Your GNews API key — get it free at https://gnews.io
+# os.getenv("KEY") returns None if the variable is not set.
+# os.getenv("KEY", "default") returns "default" if not set.
+GNEWS_API_KEY: str = os.getenv("GNEWS_API_KEY", "")
+
+# The base URL for all GNews API requests
+GNEWS_BASE_URL: str = "https://gnews.io/api/v4/search"
+
+# The search query — what topics to search for in news articles
+GNEWS_QUERY: str = os.getenv(
+    "GNEWS_QUERY",
+    "artificial intelligence OR generative AI OR OpenAI OR Google Gemini OR Anthropic"
+)
+
+# Maximum number of articles to fetch per API call
+# Free tier limit: 10 articles per request
+GNEWS_MAX_RESULTS: int = int(os.getenv("GNEWS_MAX_RESULTS", "10"))
+
+# Language filter: "en" = English articles only
+GNEWS_LANGUAGE: str = os.getenv("GNEWS_LANGUAGE", "en")
+
+# Country filter: "us" = news from United States sources
+GNEWS_COUNTRY: str = os.getenv("GNEWS_COUNTRY", "us")
+
+# Category tag applied to ALL articles fetched by this pipeline
+# Useful for filtering when you add more categories later (Week 3)
+GNEWS_CATEGORY: str = "AI"
+
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+# SQLAlchemy uses a "connection URL" to know which database to connect to.
+# The format is: dialect+driver://username:password@host:port/database
+#
+# Examples:
+#   postgresql://postgres:postgres@localhost:5432/ai_pulse_db  → PostgreSQL
+#   sqlite:///local.db                                          → SQLite (file-based)
+# =============================================================================
+
+# Full database connection URL — read from .env file
+DATABASE_URL: str = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres@localhost:5432/ai_pulse_db"
+)
+
+# Name of the raw data table in PostgreSQL
+# "raw_" prefix is a Data Engineering convention:
+#   raw_  → data exactly as it came from the source (no transformations)
+#   stg_  → staging: lightly cleaned
+#   fct_  → fact tables: cleaned and modeled (Week 2+)
+RAW_TABLE_NAME: str = "raw_ai_news"
+
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+
+# Log level controls how much information is printed/saved
+# DEBUG   → everything (very verbose, for development)
+# INFO    → normal operations (what we use here)
+# WARNING → something unexpected but non-fatal
+# ERROR   → something went wrong
+# CRITICAL → system cannot continue
+LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+
+# Path to the log file — stored in the logs/ folder at project root
+LOG_FILE_PATH: Path = PROJECT_ROOT / "logs" / "pipeline.log"
+
+
+# =============================================================================
+# Validation
+# =============================================================================
+# This function checks that required settings are present.
+# A Senior DE always validates configuration at startup — fail fast and loudly.
+# =============================================================================
+
+def validate_config() -> None:
+    """
+    Validate that all required environment variables are set.
+
+    Raises:
+        ValueError: If a required environment variable is missing.
+
+    CONCEPT — Fail Fast:
+        If your API key is missing, it's better to crash immediately with a
+        clear error message than to run for 10 minutes and fail mysteriously.
+        This is called "failing fast" — a core software engineering principle.
+    """
+    # List of variables that must not be empty
+    required_vars = {
+        "GNEWS_API_KEY": GNEWS_API_KEY,
+        "DATABASE_URL": DATABASE_URL,
+    }
+
+    # Check each required variable
+    missing = [name for name, value in required_vars.items() if not value]
+
+    if missing:
+        raise ValueError(
+            f"Missing required environment variables: {', '.join(missing)}\n"
+            f"Please check your .env file. See .env.example for reference."
+        )

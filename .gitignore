@@ -1,0 +1,66 @@
+# =============================================================================
+# .gitignore — AI Pulse Project
+# =============================================================================
+# PURPOSE: Tells Git which files/folders to NEVER track.
+# RULE: Secrets, generated files, and system junk should never go to GitHub.
+# =============================================================================
+
+
+# --- Python bytecode ---
+# Python compiles .py files into .pyc files for faster execution.
+# These are generated automatically and should never be committed.
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+
+# --- Virtual environment ---
+# A virtual environment is an isolated Python installation for this project.
+# It can be recreated from requirements.txt, so we never commit it.
+venv/
+.venv/
+env/
+ENV/
+
+
+# --- Environment variables (MOST IMPORTANT) ---
+# The .env file contains your API keys and database passwords.
+# NEVER commit this file. Anyone who sees it can use your API key.
+.env
+
+
+# --- IDE and editor files ---
+# VS Code creates a .vscode/ folder with your personal settings.
+# These are machine-specific and not part of the project.
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+# --- Operating system files ---
+# macOS creates .DS_Store files. Windows creates Thumbs.db.
+# These are system files, not project files.
+.DS_Store
+Thumbs.db
+
+
+# --- Log files ---
+# Log files are generated at runtime. We don't want to track them.
+# We keep the logs/ folder (via .gitkeep) but ignore the actual log files.
+logs/*.log
+
+
+# --- Pytest cache ---
+# pytest generates a .pytest_cache/ folder during test runs.
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+# --- Distribution and packaging ---
+# If you ever package this project, these are generated files.
+dist/
+build/
+*.egg-info/
