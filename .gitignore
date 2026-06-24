@@ -64,3 +64,17 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Logs
+logs/
+*.log
+
+# Python cache
+__pycache__/
+.pytest_cache/
+
+# Virtual environment
+venv/
+
+# Secrets
+.env
