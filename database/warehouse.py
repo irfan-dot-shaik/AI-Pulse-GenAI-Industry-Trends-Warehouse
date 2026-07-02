@@ -38,8 +38,8 @@ from sqlalchemy.engine import Engine        # Type for the engine object
 from sqlalchemy.dialects.postgresql import insert as pg_insert  # PostgreSQL upsert
 
 # Our project modules
-from config.settings import DATABASE_URL, RAW_TABLE_NAME
-from database.models import Base, RawAiNews
+from config.settings import DATABASE_URL, RAW_TABLE_NAME, STG_TABLE_NAME
+from database.models import Base, RawAiNews, StagingAiNews
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -229,7 +229,7 @@ def load_dataframe_to_warehouse(df: pd.DataFrame, engine: Engine) -> int:
             session.commit()
 
             skipped = len(records) - inserted_count
-            logger.info(f"✓ Insert complete: {inserted_count} new records inserted, "
+            logger.info(f"[OK] Insert complete: {inserted_count} new records inserted, "
                        f"{skipped} duplicates skipped.")
 
         except Exception as e:
@@ -288,10 +288,143 @@ def test_connection(engine: Engine) -> bool:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        logger.info("Database connection test: PASSED ✓")
+        logger.info("Database connection test: PASSED [OK]")
         return True
 
     except Exception as e:
         logger.error(f"Database connection test FAILED: {str(e)}")
         logger.error("Make sure PostgreSQL is running and DATABASE_URL is correct.")
         return False
+
+
+# =============================================================================
+# Week 2 — Staging Layer Functions
+# =============================================================================
+# These functions are NEW in Week 2. They mirror the pattern established in
+# Week 1 (load_dataframe_to_warehouse) but target the stg_ai_news table.
+# The existing Week 1 functions above are completely untouched.
+# =============================================================================
+
+def load_staging_to_warehouse(df: pd.DataFrame, engine: Engine) -> int:
+    """
+    Insert scored, validated records into the stg_ai_news staging table.
+
+    Mirrors load_dataframe_to_warehouse() from Week 1, but targets stg_ai_news.
+    Uses the same INSERT ... ON CONFLICT DO NOTHING pattern for idempotency:
+      - New URLs → inserted
+      - Duplicate URLs → silently skipped
+
+    The staging table contains all raw columns PLUS:
+      - intelligence_score
+      - score_category
+      - is_valid
+      - validation_notes
+      - keywords_found
+
+    Args:
+        df (pd.DataFrame):  Scored DataFrame from processing/scorer.py.
+                            Must include all stg_ai_news columns.
+        engine (Engine):    The database engine.
+
+    Returns:
+        int: Number of NEW records actually inserted (duplicates not counted).
+
+    CONCEPT — Why Separate Function?
+        Keeping staging load separate from raw load means:
+        - We can run them independently (re-process without re-ingesting)
+        - Each function has one clear responsibility
+        - Easy to add staging-specific logic in Week 3 (e.g., dbt)
+    """
+    if df is None or df.empty:
+        logger.warning("Empty DataFrame passed to load_staging_to_warehouse. Nothing to load.")
+        return 0
+
+    logger.info(f"Loading {len(df)} records into '{STG_TABLE_NAME}'...")
+
+    # Only keep columns that exist in the StagingAiNews ORM model
+    # This prevents errors if the DataFrame has extra columns (e.g., ingested_at from raw)
+    staging_columns = [
+        "title", "source", "author", "description", "published_at",
+        "url", "category", "intelligence_score", "score_category",
+        "is_valid", "validation_notes", "keywords_found",
+    ]
+    # Filter to only include columns that actually exist in the DataFrame
+    available_cols = [col for col in staging_columns if col in df.columns]
+    df_to_load = df[available_cols].copy()
+
+    # Convert DataFrame to list of dicts for SQLAlchemy
+    records = df_to_load.to_dict(orient="records")
+
+    # Clean each record: replace NaN/NaT with None, convert bool → int
+    import math
+    cleaned_records = []
+    for record in records:
+        clean = {}
+        for key, value in record.items():
+            # pandas NaN and float NaN → None (NULL in PostgreSQL)
+            if isinstance(value, float) and math.isnan(value):
+                clean[key] = None
+            # pandas NaT → None
+            elif hasattr(value, '__class__') and value.__class__.__name__ == 'NaTType':
+                clean[key] = None
+            # Python bool → int (is_valid column is INTEGER in PostgreSQL)
+            elif isinstance(value, bool):
+                clean[key] = int(value)
+            else:
+                clean[key] = value
+        cleaned_records.append(clean)
+
+    session_factory = sessionmaker(bind=engine)
+    inserted_count = 0
+
+    with session_factory() as session:
+        try:
+            # INSERT INTO stg_ai_news (...) VALUES (...)
+            # ON CONFLICT (url) DO NOTHING
+            stmt = (
+                pg_insert(StagingAiNews)
+                .values(cleaned_records)
+                .on_conflict_do_nothing(
+                    index_elements=["url"]  # Our idempotency key
+                )
+            )
+
+            result = session.execute(stmt)
+            inserted_count = result.rowcount
+            session.commit()
+
+            skipped = len(cleaned_records) - inserted_count
+            logger.info(
+                f"[OK] Staging load complete: {inserted_count} new records inserted, "
+                f"{skipped} duplicates skipped."
+            )
+
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to insert records into {STG_TABLE_NAME}: {str(e)}")
+            logger.error("Transaction rolled back. Staging table unchanged.")
+            return 0
+
+    return inserted_count
+
+
+def get_staging_record_count(engine: Engine) -> int:
+    """
+    Return the total number of records in the stg_ai_news staging table.
+
+    Used by main.py to report staging table size after each pipeline run.
+
+    Args:
+        engine (Engine): The database engine.
+
+    Returns:
+        int: Total row count in stg_ai_news, or -1 if the query fails.
+    """
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(f"SELECT COUNT(*) FROM {STG_TABLE_NAME}"))
+            count = result.scalar()
+            return count or 0
+    except Exception as e:
+        logger.error(f"Could not get staging record count: {str(e)}")
+        return -1

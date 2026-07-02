@@ -161,3 +161,27 @@ def validate_config() -> None:
             f"Missing required environment variables: {', '.join(missing)}\n"
             f"Please check your .env file. See .env.example for reference."
         )
+
+
+# =============================================================================
+# Week 2 — Staging & Processing Configuration
+# =============================================================================
+# These constants are NEW in Week 2.
+# All Week 1 settings above are completely untouched.
+# =============================================================================
+
+# Name of the staging table in PostgreSQL
+# "stg_" prefix = staging layer (cleaned, validated, scored)
+STG_TABLE_NAME: str = "stg_ai_news"
+
+# Minimum description length (chars) to be considered for higher content scores
+# Articles shorter than this get the lowest content length score
+PROCESSING_MIN_DESC_LENGTH: int = 50
+
+# Maximum description length stored in staging (longer text is truncated)
+# This prevents extremely long articles from bloating the DB
+PROCESSING_MAX_DESC_LENGTH: int = 1000
+
+# Minimum title length (chars) — shorter titles fail validation
+PROCESSING_MIN_TITLE_LENGTH: int = 10
+

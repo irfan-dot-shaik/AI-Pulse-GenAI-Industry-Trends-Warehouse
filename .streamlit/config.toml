@@ -1,0 +1,13 @@
+[theme]
+base = "dark"
+primaryColor = "#C8A96A"
+backgroundColor = "#0F1512"
+secondaryBackgroundColor = "#17201B"
+textColor = "#F7F5F2"
+
+[server]
+fileWatcherType = "poll"
+headless = false
+
+[browser]
+gatherUsageStats = false

@@ -40,3 +40,17 @@ python-dotenv==1.0.0
 # pytest: The standard Python testing framework
 # Used to write and run unit tests for our pipeline
 pytest==7.4.4
+
+# =============================================================================
+# Week 2 — Dashboard Dependencies
+# =============================================================================
+
+# --- Dashboard Framework ---
+# streamlit: Turns Python scripts into interactive web apps
+# No HTML, CSS, or JavaScript required for the core UI
+streamlit==1.57.0
+
+# --- Interactive Charts ---
+# plotly: Creates interactive charts (hover, zoom, click)
+# plotly.express: High-level chart API (recommended for dashboards)
+plotly==6.5.0

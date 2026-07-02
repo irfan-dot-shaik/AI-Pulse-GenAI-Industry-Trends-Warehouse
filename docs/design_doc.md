@@ -122,10 +122,70 @@ warehouse.load_dataframe_to_warehouse()
     ├── Commit transaction
     └── Return count of new rows inserted
 
-PostgreSQL: raw_ai_news table
+PostgreSQL: raw_ai_news table (RAW LAYER - never modified)
+
+-- WEEK 2 ADDITION: Processing Pipeline --
+
+pd.DataFrame (same articles, from memory)
+    |
+    v
+validator.validate_articles()
+    |-- RULE 1: title not empty or placeholder
+    |-- RULE 2: title >= 10 characters
+    |-- RULE 3: url not empty
+    |-- RULE 4: url starts with 'http'
+    +-- RULE 5: published_at not null
+    Returns: valid_df (passes all), invalid_df (fails any), report
+
+valid_df
+    |
+    v
+transformer.transform_articles()
+    |-- strip whitespace from all text fields
+    |-- title-case source names
+    |-- normalize author ("Unknown" if blank)
+    |-- truncate description to 1000 chars
+    |-- uppercase category
+    +-- add is_valid=True, validation_notes=""
+    Returns: clean_df with 2 new metadata columns
+
+clean_df
+    |
+    v
+scorer.score_articles()
+    |-- Recency score:     0-30 pts (how recent is it?)
+    |-- Keyword score:     0-40 pts (AI keywords in title+description?)
+    |-- Credibility score: 0-20 pts (is source trusted?)
+    +-- Length score:      0-10 pts (is description detailed?)
+    Returns: scored_df with intelligence_score, score_category, keywords_found
+
+scored_df
+    |
+    v
+warehouse.load_staging_to_warehouse()
+    |-- Column filter (only stg_ai_news columns)
+    |-- bool -> int conversion (is_valid)
+    |-- NaN/NaT -> None cleanup
+    +-- INSERT INTO stg_ai_news ... ON CONFLICT (url) DO NOTHING
+
+PostgreSQL: stg_ai_news table (STAGING LAYER - queryable by analytics)
 ```
 
----
+### 3.3 Warehouse Layer Philosophy (Week 2)
+
+**Why two tables instead of one?**
+
+| Layer | Table | Purpose | Modified? |
+|---|---|---|---|
+| Raw | `raw_ai_news` | Permanent audit trail, exact API data | Never |
+| Staging | `stg_ai_news` | Clean, scored, analytics-ready | Re-derived from raw |
+
+**The Immutability Principle:**
+Raw data is sacred. Once written, it is never changed. If processing logic
+improves, we re-run processing FROM the raw table — not from the API.
+This gives us historical coverage, API quota savings, and full auditability.
+
+
 
 ## 4. Database Schema
 
@@ -155,6 +215,224 @@ CREATE TABLE raw_ai_news (
 | `category` | `VARCHAR(50)` | Short, fixed values; TEXT is overkill |
 | `author` | Nullable | GNews rarely provides author data |
 | `id` | `SERIAL` | Auto-increment; we never set it manually |
+
+---
+
+## 4.5 Entity Relationship Diagram (ER Diagram)
+
+### What is an ER Diagram?
+
+An ER Diagram shows:
+- What **tables** exist in the database
+- What **columns** each table has
+- What **constraints** are enforced (PRIMARY KEY, UNIQUE, NOT NULL)
+- How tables **relate** to each other
+
+---
+
+### ASCII ER Diagram
+
+```
++------------------------------------------------------------------+
+|                       EXTERNAL WORLD                             |
+|                                                                  |
+|   GNews API (gnews.io)                                           |
+|   Returns JSON:  title, source, description, url, publishedAt    |
++----------------------------+-------------------------------------+
+                             |
+                             | HTTP GET (100 req/day free tier)
+                             | ingestion/gnews_client.py
+                             v
++------------------------------------------------------------------+
+|               TABLE: raw_ai_news  (RAW LAYER)                    |
+|------------------------------------------------------------------|
+| PK  id            SERIAL         NOT NULL  auto-increment        |
+|     title         TEXT           NOT NULL                        |
+|     source        TEXT           NULLABLE                        |
+|     author        TEXT           NULLABLE                        |
+|     description   TEXT           NULLABLE                        |
+|     published_at  TIMESTAMPTZ    NULLABLE                        |
+| UQ  url           TEXT           NOT NULL  <-- UNIQUE KEY        |
+|     category      VARCHAR(50)    DEFAULT 'AI'                    |
+|     ingested_at   TIMESTAMPTZ    DEFAULT NOW() (set by Postgres) |
+|------------------------------------------------------------------|
+| CONSTRAINTS:                                                     |
+|   PRIMARY KEY:  id                                               |
+|   UNIQUE:       url  (named: uq_raw_ai_news_url)                 |
++--------------------------------+---------------------------------+
+                                 |
+                                 | Processing Pipeline (Week 2)
+                                 |   validator.py  -> validate
+                                 |   transformer.py -> normalize
+                                 |   scorer.py     -> score 0-100
+                                 v
++------------------------------------------------------------------+
+|               TABLE: stg_ai_news  (STAGING LAYER)                |
+|------------------------------------------------------------------|
+| PK  id                SERIAL       NOT NULL  auto-increment      |
+|     title             TEXT         NOT NULL  (cleaned)           |
+|     source            TEXT         NULLABLE  (title-cased)       |
+|     author            TEXT         NULLABLE  ("Unknown" default)  |
+|     description       TEXT         NULLABLE  (max 1000 chars)    |
+|     published_at      TIMESTAMPTZ  NULLABLE  (carried over)      |
+| UQ  url               TEXT         NOT NULL  <-- UNIQUE KEY      |
+|     category          VARCHAR(50)  DEFAULT 'AI' (uppercase)      |
+|     ingested_at       TIMESTAMPTZ  NULLABLE  (from raw)          |
+|     intelligence_score INTEGER     DEFAULT 0  (0-100 score)      |
+|     score_category    VARCHAR(50)  DEFAULT 'Normal'              |
+|     is_valid          INTEGER      DEFAULT 1  (1=True, 0=False)  |
+|     validation_notes  TEXT         DEFAULT ''                    |
+|     keywords_found    TEXT         DEFAULT ''                    |
+|     processed_at      TIMESTAMPTZ  DEFAULT NOW() (set by Postgres)|
+|------------------------------------------------------------------|
+| CONSTRAINTS:                                                     |
+|   PRIMARY KEY:  id                                               |
+|   UNIQUE:       url  (named: uq_stg_ai_news_url)                 |
++--------------------------------+---------------------------------+
+                                 |
+                                 | analytics/queries.py
+                                 | (10 Python functions wrapping SQL)
+                                 v
++------------------------------------------------------------------+
+|           ANALYTICS LAYER  (dashboard reads from HERE)           |
+|                                                                  |
+|   dashboard/app.py        <- Home page KPI cards                 |
+|   dashboard/pages/        <- Explorer, Analytics, Top News       |
+|   analytics/queries.py    <- All SQL runs against stg_ai_news    |
++------------------------------------------------------------------+
+```
+
+---
+
+### Primary Keys
+
+```
+raw_ai_news.id     SERIAL PRIMARY KEY
+  - Auto-increments: 1, 2, 3, 4, ...
+  - Set by PostgreSQL automatically
+  - You NEVER insert the id value manually
+  - Uniquely identifies every row in raw_ai_news
+
+stg_ai_news.id     SERIAL PRIMARY KEY
+  - Same pattern, independent sequence
+  - The id in stg_ai_news is NOT the same as raw_ai_news id
+  - Each table manages its own id sequence
+```
+
+---
+
+### Unique Constraints
+
+```
+raw_ai_news:   UNIQUE(url)   [named: uq_raw_ai_news_url]
+stg_ai_news:   UNIQUE(url)   [named: uq_stg_ai_news_url]
+```
+
+Both tables enforce `url` uniqueness independently.
+This allows the `ON CONFLICT DO NOTHING` pattern in both tables.
+
+---
+
+### Why is URL the UNIQUE Key? (Not Title or ID)
+
+This is one of the most important design decisions in the project.
+
+| Option | Problem |
+|---|---|
+| `UNIQUE(title)` | Two articles from different sources can have identical titles |
+| `UNIQUE(id from API)` | GNews does not return a stable unique article ID |
+| `UNIQUE(url)` | Every article has exactly one canonical URL — never duplicated |
+
+**The URL is the natural business key for a news article.**
+
+Example:
+- `https://techcrunch.com/2026/07/01/openai-gpt5/` → always identifies one specific article
+- If the pipeline runs 100 times, this URL appears exactly once in the DB
+- `ON CONFLICT (url) DO NOTHING` → the 2nd–100th run silently skips it
+
+This property is called **idempotency**: running the pipeline multiple times
+produces the same result as running it once. This is a core Data Engineering principle.
+
+---
+
+### How Raw and Staging Tables Are Related
+
+```
+raw_ai_news  ←──────────────────────────────── stg_ai_news
+     |                                               |
+     |  LOGICAL RELATIONSHIP (not a foreign key)     |
+     |                                               |
+     |  Same article appears in both tables          |
+     |  linked by the URL column                     |
+     |                                               |
+     |  raw_ai_news.url == stg_ai_news.url           |
+```
+
+**Key design decision:** There is NO foreign key between the two tables.
+
+**Why not use a foreign key?**
+
+In traditional relational databases, you would add:
+```sql
+-- We deliberately chose NOT to do this:
+stg_ai_news.raw_id INTEGER REFERENCES raw_ai_news(id)
+```
+
+**Reasons we don't:**
+
+1. **Re-derivability** — We want to be able to `TRUNCATE stg_ai_news` and
+   rebuild it from raw without any FK cascade complications.
+
+2. **Independence** — The staging table should be able to receive data from
+   MULTIPLE raw sources in the future (not just raw_ai_news).
+
+3. **Data Engineering norm** — In real warehouse tools like dbt, Snowflake,
+   or BigQuery, staging tables are logically related but not FK-constrained.
+   The URL is the shared key used for joining when needed.
+
+**When you need to join them:**
+```sql
+-- Join to compare raw vs. cleaned version of an article:
+SELECT
+    r.title          AS raw_title,
+    s.title          AS clean_title,
+    r.source         AS raw_source,
+    s.source         AS clean_source,
+    s.intelligence_score
+FROM raw_ai_news r
+JOIN stg_ai_news s ON r.url = s.url;
+```
+
+---
+
+### Which Table Does the Dashboard Read From?
+
+```
++-----------------+     Dashboard reads?     +-------------------+
+|  raw_ai_news    |   NO  (audit trail only)  |  stg_ai_news      |
+|                 |                           |                   |
+|  id, title,     |                           |  id, title,       |
+|  source, url,   |                           |  source, url,     |
+|  published_at,  |                           |  intelligence_score|
+|  ingested_at    |                           |  score_category,  |
+|                 |                           |  keywords_found,  |
+|                 |                           |  processed_at     |
++-----------------+                           +-------------------+
+                                                       ^
+                                                       |
+                                              analytics/queries.py
+                                              (all 10 functions)
+                                                       |
+                                                dashboard/app.py
+```
+
+**Rule:** The dashboard ALWAYS queries `stg_ai_news`.
+- It is clean (whitespace stripped, authors normalized)
+- It is scored (every article has intelligence_score 0-100)
+- It is validated (only articles that passed all 5 rules)
+
+The `raw_ai_news` table exists purely as an immutable audit trail.
+In a production system, only Data Engineers and DBAs access raw tables directly.
 
 ---
 

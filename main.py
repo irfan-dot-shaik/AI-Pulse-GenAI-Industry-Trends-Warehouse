@@ -73,11 +73,11 @@ logger = get_logger(__name__)
 # =============================================================================
 
 BANNER = """
-╔══════════════════════════════════════════════════════════════╗
-║           AI PULSE — GenAI Industry Trends Warehouse         ║
-║                   Data Pipeline — Week 1                     ║
-║          GNews API → Python → Pandas → PostgreSQL           ║
-╚══════════════════════════════════════════════════════════════╝
+==============================================================
+   AI PULSE -- GenAI Industry Trends Warehouse
+   Data Pipeline -- Week 1 + 2
+   GNews API -> Validate -> Score -> PostgreSQL
+==============================================================
 """
 
 
@@ -87,15 +87,16 @@ BANNER = """
 
 def run_pipeline() -> None:
     """
-    Execute the complete Week 1 data pipeline end-to-end.
+    Execute the complete data pipeline end-to-end (Week 1 + Week 2).
 
     Pipeline Steps:
         1. Validate configuration
         2. Establish database connection
-        3. Initialize database schema
+        3. Initialize database schema (raw + staging tables)
         4. Fetch news from GNews API
-        5. Load data into PostgreSQL warehouse
-        6. Report summary
+        5. Load raw articles into raw_ai_news (Week 1)
+        6. Validate, transform, score -> load to stg_ai_news (Week 2)
+        7. Report summary
 
     This function raises SystemExit on fatal errors so the caller
     (or a scheduler in later weeks) can detect pipeline failures.
@@ -114,13 +115,13 @@ def run_pipeline() -> None:
     # Before doing anything, check that required env vars are set.
     # "Fail fast" — catch problems at startup, not halfway through.
     # =========================================================================
-    logger.info("━" * 60)
-    logger.info("STEP 1/5 — Validating configuration")
-    logger.info("━" * 60)
+    logger.info("-" * 60)
+    logger.info("STEP 1/6 -- Validating configuration")
+    logger.info("-" * 60)
 
     try:
         validate_config()
-        logger.info("✓ All required environment variables are present")
+        logger.info("[OK] All required environment variables are present")
     except ValueError as e:
         logger.critical(f"Configuration error: {str(e)}")
         logger.critical("Pipeline aborted. Fix your .env file and retry.")
@@ -129,9 +130,9 @@ def run_pipeline() -> None:
     # =========================================================================
     # STEP 2: Establish Database Connection
     # =========================================================================
-    logger.info("━" * 60)
-    logger.info("STEP 2/5 — Connecting to PostgreSQL")
-    logger.info("━" * 60)
+    logger.info("-" * 60)
+    logger.info("STEP 2/6 -- Connecting to PostgreSQL")
+    logger.info("-" * 60)
 
     try:
         # create_db_engine() builds the connection pool
@@ -150,7 +151,7 @@ def run_pipeline() -> None:
         logger.critical("     Run: psql -U postgres -c 'CREATE DATABASE ai_pulse_db;'")
         sys.exit(1)
 
-    logger.info("✓ Successfully connected to PostgreSQL")
+    logger.info("[OK] Successfully connected to PostgreSQL")
 
     # =========================================================================
     # STEP 3: Initialize Database Schema
@@ -158,13 +159,13 @@ def run_pipeline() -> None:
     # Creates the raw_ai_news table if it doesn't already exist.
     # Safe to run on every pipeline execution (idempotent).
     # =========================================================================
-    logger.info("━" * 60)
-    logger.info("STEP 3/5 — Initializing database schema")
-    logger.info("━" * 60)
+    logger.info("-" * 60)
+    logger.info("STEP 3/6 -- Initializing database schema")
+    logger.info("-" * 60)
 
     try:
         initialize_database(engine)
-        logger.info("✓ Table 'raw_ai_news' is ready")
+        logger.info("[OK] Table 'raw_ai_news' is ready")
     except Exception as e:
         logger.critical(f"Schema initialization failed: {str(e)}")
         sys.exit(1)
@@ -172,9 +173,9 @@ def run_pipeline() -> None:
     # =========================================================================
     # STEP 4: Fetch Data from GNews API
     # =========================================================================
-    logger.info("━" * 60)
-    logger.info("STEP 4/5 — Fetching AI news from GNews API")
-    logger.info("━" * 60)
+    logger.info("-" * 60)
+    logger.info("STEP 4/6 -- Fetching AI news from GNews API")
+    logger.info("-" * 60)
 
     df = fetch_ai_news()
 
@@ -185,10 +186,10 @@ def run_pipeline() -> None:
         logger.error("  2. No articles matched the search query")
         logger.error("  3. Network/connectivity issue")
         logger.warning("Pipeline completing with 0 records loaded.")
-        _report_summary(pipeline_start, fetched=0, inserted=0, engine=engine)
+        _report_summary(pipeline_start, fetched=0, inserted=0, staging_inserted=0, engine=engine)
         return  # Exit gracefully (not sys.exit — this is not a fatal error)
 
-    logger.info(f"✓ Fetched {len(df)} articles from GNews API")
+    logger.info(f"[OK] Fetched {len(df)} articles from GNews API")
 
     # Log a sample of what we fetched (first 3 titles)
     logger.info("Sample articles fetched:")
@@ -198,32 +199,84 @@ def run_pipeline() -> None:
     # =========================================================================
     # STEP 5: Load Data into PostgreSQL
     # =========================================================================
-    logger.info("━" * 60)
-    logger.info("STEP 5/5 — Loading data into PostgreSQL warehouse")
-    logger.info("━" * 60)
+    logger.info("-" * 60)
+    logger.info("STEP 5/6 -- Loading raw articles into PostgreSQL")
+    logger.info("-" * 60)
 
     inserted = load_dataframe_to_warehouse(df, engine)
 
     # =========================================================================
-    # STEP 6: Report Summary
+    # STEP 6: Process and Load to Staging Layer (Week 2)
     # =========================================================================
-    _report_summary(pipeline_start, fetched=len(df), inserted=inserted, engine=engine)
+    # This is the new Week 2 step. It takes the fetched articles and:
+    #   1. Validates them (removes incomplete records)
+    #   2. Transforms them (normalizes text)
+    #   3. Scores them (computes AI Intelligence Score 0-100)
+    #   4. Loads the results into stg_ai_news
+    # =========================================================================
+    logger.info("-" * 60)
+    logger.info("STEP 6/6 -- Processing and loading to staging layer")
+    logger.info("-" * 60)
+
+    # Import processing modules (done here to keep Week 1 imports clean at top)
+    from processing.validator import validate_articles
+    from processing.transformer import transform_articles
+    from processing.scorer import score_articles
+    from database.warehouse import load_staging_to_warehouse, get_staging_record_count
+
+    # Step 6a: Validate — remove articles with missing title, URL, or timestamp
+    validation_result = validate_articles(df)
+    logger.info(
+        f"Validation: {validation_result.report['valid']} valid, "
+        f"{validation_result.report['invalid']} invalid articles"
+    )
+
+    staging_inserted = 0
+    if validation_result.valid_df.empty:
+        logger.warning("No valid articles to process. Staging table not updated.")
+    else:
+        # Step 6b: Transform — normalize and clean the valid articles
+        transformed_df = transform_articles(validation_result.valid_df)
+
+        # Step 6c: Score — compute AI Intelligence Score for each article
+        scored_df = score_articles(transformed_df)
+
+        # Step 6d: Load — insert scored articles into stg_ai_news
+        staging_inserted = load_staging_to_warehouse(scored_df, engine)
+
+        logger.info(f"[OK] Staging layer updated: {staging_inserted} new records")
+
+    staging_total = get_staging_record_count(engine)
+    logger.info(f"Total records in stg_ai_news: {staging_total}")
+
+    # =========================================================================
+    # STEP 7: Report Summary
+    # =========================================================================
+    _report_summary(
+        pipeline_start,
+        fetched=len(df),
+        inserted=inserted,
+        staging_inserted=staging_inserted,
+        engine=engine
+    )
 
 
 def _report_summary(
     pipeline_start: datetime,
     fetched: int,
     inserted: int,
+    staging_inserted: int,
     engine
 ) -> None:
     """
     Log a formatted summary of the pipeline run.
 
     Args:
-        pipeline_start: When the pipeline started (UTC datetime)
-        fetched:        Number of articles fetched from API
-        inserted:       Number of new records inserted to DB
-        engine:         DB engine for getting total record count
+        pipeline_start:    When the pipeline started (UTC datetime)
+        fetched:           Number of articles fetched from API
+        inserted:          Number of new records inserted to raw_ai_news
+        staging_inserted:  Number of new records inserted to stg_ai_news
+        engine:            DB engine for getting total record count
     """
     pipeline_end = datetime.now(timezone.utc)
     duration_seconds = (pipeline_end - pipeline_start).total_seconds()
@@ -231,24 +284,34 @@ def _report_summary(
     total_in_db = get_record_count(engine)
     duplicates_skipped = fetched - inserted if fetched > 0 else 0
 
+    # Import here to avoid circular import concerns
+    from database.warehouse import get_staging_record_count
+    staging_total = get_staging_record_count(engine)
+
     summary = f"""
-╔══════════════════════════════════════════════════════════════╗
-║                    PIPELINE RUN SUMMARY                      ║
-╠══════════════════════════════════════════════════════════════╣
-║  Status:           {"SUCCESS ✓" if inserted >= 0 else "FAILED ✗":<46} ║
-║  Run Duration:     {f"{duration_seconds:.2f}s":<46} ║
-║  Articles Fetched: {str(fetched):<46} ║
-║  New Records:      {str(inserted):<46} ║
-║  Duplicates Skip:  {str(duplicates_skipped):<46} ║
-║  Total in DB:      {str(total_in_db):<46} ║
-╚══════════════════════════════════════════════════════════════╝
+==============================================================
+              PIPELINE RUN SUMMARY (Week 1 + 2)
+==============================================================
+  Status:              SUCCESS
+  Run Duration:        {f"{duration_seconds:.2f}s"}
+  Articles Fetched:    {fetched}
+  Raw New Records:     {inserted}
+  Raw Duplicates:      {duplicates_skipped}
+  Raw Total in DB:     {total_in_db}
+  Staging New:         {staging_inserted}
+  Staging Total:       {staging_total}
+==============================================================
 """
     print(summary)
     logger.info("Pipeline execution completed successfully")
-    logger.info(f"Duration: {duration_seconds:.2f}s | "
-               f"Fetched: {fetched} | "
-               f"Inserted: {inserted} | "
-               f"Total in DB: {total_in_db}")
+    logger.info(
+        f"Duration: {duration_seconds:.2f}s | "
+        f"Fetched: {fetched} | "
+        f"Raw inserted: {inserted} | "
+        f"Staging inserted: {staging_inserted} | "
+        f"Raw total: {total_in_db} | "
+        f"Staging total: {staging_total}"
+    )
 
 
 # =============================================================================

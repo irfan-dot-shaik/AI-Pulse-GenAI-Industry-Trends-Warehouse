@@ -177,3 +177,153 @@ class RawAiNews(Base):
             f"source='{self.source}'"
             f">"
         )
+
+
+# =============================================================================
+# StagingAiNews — Maps to the "stg_ai_news" PostgreSQL table
+# =============================================================================
+#
+# WEEK 2 ADDITION — Staging Layer
+#
+# DATA ENGINEERING CONVENTION — Layer Naming:
+#   raw_  → exactly as received from source  (raw_ai_news  — Week 1)
+#   stg_  → cleaned, validated, enriched     (stg_ai_news  — Week 2)
+#   fct_  → fact tables for analytics        (Week 3+)
+#
+# WHY A SEPARATE STAGING TABLE?
+#   The raw layer must NEVER be modified — it is the audit trail.
+#   The staging layer is our "working copy":
+#     - Normalized text (stripped, title-cased)
+#     - Validated (only complete records)
+#     - Enriched (intelligence_score added)
+#
+#   If we discover a bug in our cleaning logic later, we can:
+#     1. Fix the processing code
+#     2. Re-run processing from raw_ai_news
+#     3. Rebuild stg_ai_news cleanly
+#
+#   This is called "raw layer as source of truth" — a Data Engineering best practice.
+#
+# ADDITIONAL COLUMNS vs. raw_ai_news:
+#   intelligence_score  → 0–100 score from scorer.py
+#   score_category      → "Hot Trend" / "High Impact" / "Trending" / "Normal"
+#   is_valid            → True for all rows (invalid rows never reach staging)
+#   validation_notes    → "" for valid rows; rejection reason for invalid ones
+#   keywords_found      → comma-separated list of matched AI keywords
+#   processed_at        → when this row was processed (set by PostgreSQL)
+#
+# =============================================================================
+
+class StagingAiNews(Base):
+    """
+    ORM model representing the stg_ai_news PostgreSQL staging table.
+
+    Contains cleaned, validated, and scored versions of articles from raw_ai_news.
+    This is the table queried by the analytics module and the Streamlit dashboard.
+
+    TABLE: stg_ai_news
+    """
+
+    __tablename__ = "stg_ai_news"
+
+    # -------------------------------------------------------------------------
+    # Core Columns (same as raw_ai_news — cleaned versions)
+    # -------------------------------------------------------------------------
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+
+    # Cleaned title (whitespace stripped)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Normalized source name (title-cased)
+    source: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Normalized author ("Unknown" if not provided)
+    author: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Cleaned and truncated description (max 1000 chars)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Publication timestamp (timezone-aware)
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # URL — our idempotency key (same UNIQUE constraint as raw layer)
+    # UNIQUE enforced via __table_args__ below
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Normalized category (always uppercase: "AI")
+    category: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default="AI"
+    )
+
+    # When the raw article was ingested (carried over from raw_ai_news)
+    ingested_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    # -------------------------------------------------------------------------
+    # Week 2 Enrichment Columns
+    # -------------------------------------------------------------------------
+
+    # AI News Intelligence Score (0–100)
+    # Computed by processing/scorer.py using 4 transparent rules
+    intelligence_score: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=0
+    )
+
+    # Human-readable score category based on intelligence_score
+    # Values: "Hot Trend" / "High Impact" / "Trending" / "Normal"
+    score_category: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, default="Normal"
+    )
+
+    # Whether this article passed all validation rules (always True for staged rows)
+    is_valid: Mapped[Optional[bool]] = mapped_column(
+        # Using Integer(1) as boolean for broader DB compatibility
+        Integer, nullable=True, default=1
+    )
+
+    # Rejection reason if invalid (empty string for valid rows)
+    validation_notes: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, default=""
+    )
+
+    # Comma-separated AI keywords found in title + description
+    # Example: "openai, gpt, llm"
+    keywords_found: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, default=""
+    )
+
+    # When THIS row was processed (set by PostgreSQL, not Python)
+    # server_default=func.now() means DB sets this automatically
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=True,
+    )
+
+    # -------------------------------------------------------------------------
+    # Table-Level Constraints
+    # -------------------------------------------------------------------------
+    __table_args__ = (
+        UniqueConstraint("url", name="uq_stg_ai_news_url"),
+    )
+
+    def __repr__(self) -> str:
+        """
+        String representation for debugging.
+        Example:
+            <StagingAiNews id=1 score=87 title='OpenAI releases GPT-5...'>
+        """
+        return (
+            f"<StagingAiNews "
+            f"id={self.id} "
+            f"score={self.intelligence_score} "
+            f"category='{self.score_category}' "
+            f"title='{self.title[:40]}...'"
+            f">"
+        )
