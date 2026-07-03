@@ -31,17 +31,21 @@ from dashboard.utils.db_helper import get_engine, is_db_connected
 from dashboard.components.styles import inject_styles, render_page_header, render_section_header
 from dashboard.components.sidebar import render_sidebar
 from dashboard.components.article_card import render_article_card
+from dashboard.components.footer import render_footer
+from dashboard.utils.error_boundary import error_boundary
 from dashboard.utils.formatters import format_number, format_score
 from analytics.queries import (
-    get_average_intelligence_score,
-    get_max_intelligence_score,
-    get_score_category_distribution,
     get_top_scored_articles,
-    get_articles_per_source,
-    get_keyword_frequency,
-    get_all_sources,
     search_articles,
-    get_company_mentions,
+)
+from dashboard.utils.cached_queries import (
+    cached_avg_score,
+    cached_max_score,
+    cached_category_distribution,
+    cached_sources,
+    cached_keyword_freq,
+    cached_all_sources,
+    cached_company_mentions,
 )
 
 inject_styles()
@@ -76,11 +80,13 @@ render_page_header(
 # =============================================================================
 render_section_header("Executive Summary")
 
-avg_score  = get_average_intelligence_score(engine)
-peak_score = get_max_intelligence_score(engine)
-
-# Derive category counts from existing function
-cat_df     = get_score_category_distribution(engine)
+with error_boundary("Failed to load Top AI News data. Please check database connectivity."):
+    with st.spinner("Ranking articles..."):
+        avg_score  = cached_avg_score(engine)
+        peak_score = cached_max_score(engine)
+        
+        # Derive category counts from existing function
+        cat_df     = cached_category_distribution(engine)
 cat_map    = dict(zip(cat_df["score_category"], cat_df["article_count"])) if not cat_df.empty else {}
 
 hot_count    = cat_map.get("Hot Trend",   0)
@@ -112,7 +118,7 @@ with qf1:
                        key="top_kw")
 with qf2:
     if "top_sources" not in st.session_state:
-        st.session_state["top_sources"] = get_all_sources(engine)
+        st.session_state["top_sources"] = cached_all_sources(engine)
     src = st.selectbox("Source",
                        ["All Sources"] + st.session_state["top_sources"],
                        key="top_src")
@@ -179,7 +185,7 @@ else:
 # =============================================================================
 render_section_header("Trending Companies")
 
-companies_df = get_company_mentions(engine)
+companies_df = cached_company_mentions(engine)
 
 if companies_df.empty:
     st.markdown(
@@ -241,8 +247,8 @@ else:
 render_section_header("Executive Insights")
 
 # Derive insights from already-fetched data (no extra DB queries)
-src_df      = get_articles_per_source(engine, top_n=1)
-kw_df       = get_keyword_frequency(engine, top_n=1)
+src_df      = cached_sources(engine, top_n=1)
+kw_df       = cached_keyword_freq(engine, top_n=1)
 top_article = get_top_scored_articles(engine, limit=1)
 
 top_pub     = src_df["source"].iloc[0]        if not src_df.empty    else "N/A"
@@ -320,4 +326,5 @@ for col, ins in zip(i_cols, insights):
             unsafe_allow_html=True,
         )
 
-st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
+
+render_footer()

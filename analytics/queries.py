@@ -770,3 +770,90 @@ def get_company_mentions(engine: Engine) -> pd.DataFrame:
 
     result = pd.DataFrame(rows).sort_values("mentions", ascending=False)
     return result.reset_index(drop=True)
+
+
+# =============================================================================
+# Data Quality Stats (Module 7 — Insights & Pipeline Intelligence)
+# =============================================================================
+
+def get_data_quality_stats(engine: Engine) -> dict:
+    """
+    Compute data quality and pipeline health metrics by comparing
+    raw_ai_news against stg_ai_news.
+
+    Returns a dict with:
+        raw_count:          Total rows in raw_ai_news
+        staging_count:      Total rows in stg_ai_news
+        rejected_count:     raw_count - staging_count (failed validation)
+        success_rate:       staging_count / raw_count * 100
+        duplicate_count:    Rows in raw with duplicate URLs
+        avg_desc_length:    Average character length of staged descriptions
+        keyword_coverage:   % of staged articles that have ≥1 keyword match
+
+    Args:
+        engine: SQLAlchemy engine.
+
+    Returns:
+        dict with data quality metrics.
+    """
+    result = {
+        "raw_count": 0, "staging_count": 0, "rejected_count": 0,
+        "success_rate": 0.0, "duplicate_count": 0,
+        "avg_desc_length": 0, "keyword_coverage": 0.0,
+    }
+
+    try:
+        # Raw count
+        df_raw = _safe_query(engine, "SELECT COUNT(*) AS n FROM raw_ai_news")
+        if not df_raw.empty:
+            result["raw_count"] = int(df_raw["n"].iloc[0])
+
+        # Staging count
+        df_stg = _safe_query(engine, f"SELECT COUNT(*) AS n FROM {_STAGING_TABLE}")
+        if not df_stg.empty:
+            result["staging_count"] = int(df_stg["n"].iloc[0])
+
+        # Derived
+        result["rejected_count"] = max(0, result["raw_count"] - result["staging_count"])
+        if result["raw_count"] > 0:
+            result["success_rate"] = round(
+                result["staging_count"] / result["raw_count"] * 100, 1
+            )
+
+        # Duplicates in raw (URLs appearing more than once)
+        df_dup = _safe_query(engine, """
+            SELECT COUNT(*) AS n FROM (
+                SELECT url FROM raw_ai_news
+                GROUP BY url HAVING COUNT(*) > 1
+            ) AS dups
+        """)
+        if not df_dup.empty:
+            result["duplicate_count"] = int(df_dup["n"].iloc[0])
+
+        # Avg description length in staging
+        df_len = _safe_query(engine, f"""
+            SELECT ROUND(AVG(LENGTH(description)), 0) AS avg_len
+            FROM {_STAGING_TABLE}
+            WHERE description IS NOT NULL AND description != ''
+        """)
+        if not df_len.empty and df_len["avg_len"].iloc[0] is not None:
+            result["avg_desc_length"] = int(df_len["avg_len"].iloc[0])
+
+        # Keyword coverage: % of articles that have at least one keyword
+        df_kw = _safe_query(engine, f"""
+            SELECT
+                COUNT(*) FILTER (
+                    WHERE keywords_found IS NOT NULL AND keywords_found != ''
+                ) AS with_kw,
+                COUNT(*) AS total
+            FROM {_STAGING_TABLE}
+        """)
+        if not df_kw.empty and int(df_kw["total"].iloc[0]) > 0:
+            result["keyword_coverage"] = round(
+                int(df_kw["with_kw"].iloc[0]) / int(df_kw["total"].iloc[0]) * 100, 1
+            )
+
+    except Exception as e:
+        logger.error(f"Error computing data quality stats: {e}")
+
+    return result

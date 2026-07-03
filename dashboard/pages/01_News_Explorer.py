@@ -56,7 +56,10 @@ from dashboard.utils.db_helper import get_engine, is_db_connected
 from dashboard.components.styles import inject_styles, render_page_header, render_section_header
 from dashboard.components.sidebar import render_sidebar
 from dashboard.components.article_card import render_article_card
-from analytics.queries import search_articles, get_all_sources
+from dashboard.components.footer import render_footer
+from dashboard.utils.error_boundary import error_boundary
+from analytics.queries import search_articles
+from dashboard.utils.cached_queries import cached_all_sources
 from dashboard.utils.formatters import format_number
 
 # ── Design System ─────────────────────────────────────────────────────────────
@@ -118,7 +121,8 @@ with fc1:
 
 # Fetch available sources for the dropdown (cached in session state)
 if "explorer_sources" not in st.session_state:
-    st.session_state["explorer_sources"] = get_all_sources(engine)
+    with error_boundary("Failed to load source list."):
+        st.session_state["explorer_sources"] = cached_all_sources(engine)
 
 sources_list = ["All Sources"] + st.session_state["explorer_sources"]
 
@@ -187,15 +191,16 @@ sort_key      = _SORT_MAP[sort_choice]
 # would be the production choice.
 # =============================================================================
 
-with st.spinner(""):
-    raw_df = search_articles(
-        engine,
-        keyword=kw_clean,
-        source_filter=src_clean,
-        score_filter=cat_clean,
-        sort_by=sort_key,
-        limit=200,
-    )
+with error_boundary("Search failed. Please check your database connection."):
+    with st.spinner("Searching warehouse..."):
+        raw_df = search_articles(
+            engine,
+            keyword=kw_clean,
+            source_filter=src_clean,
+            score_filter=cat_clean,
+            sort_by=sort_key,
+            limit=200,
+        )
 
 # Apply score range filter in Python (no extra SQL round-trip)
 if not raw_df.empty and "intelligence_score" in raw_df.columns:
@@ -373,4 +378,5 @@ if total_pages > 1:
         unsafe_allow_html=True,
     )
 
-st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
+
+render_footer()

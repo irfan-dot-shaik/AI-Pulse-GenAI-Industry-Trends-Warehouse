@@ -51,13 +51,17 @@ from dashboard.components.charts import (
     make_source_bar,
 )
 from dashboard.components.article_card import render_compact_article_row
+from dashboard.components.footer import render_footer
 from analytics.queries import (
     get_top_scored_articles,
     get_articles_per_day,
-    get_score_category_distribution,
-    get_articles_per_source,
     get_latest_articles,
 )
+from dashboard.utils.cached_queries import (
+    cached_category_distribution,
+    cached_sources,
+)
+from dashboard.utils.error_boundary import error_boundary
 from dashboard.utils.formatters import format_relative_time
 
 # ── Inject Design System ──────────────────────────────────────────────────────
@@ -109,7 +113,8 @@ render_page_header(
 
 # ── Section 1: KPI Cards ──────────────────────────────────────────────────────
 render_section_header("Key Metrics")
-render_kpi_cards(engine)
+with error_boundary("Failed to load key metrics. Please check database connectivity."):
+    render_kpi_cards(engine)
 
 # ── Section 2: Top Intelligence + Score Mix ───────────────────────────────────
 render_section_header("Intelligence Briefing")
@@ -123,7 +128,8 @@ with col_articles:
         "margin-bottom:1rem;'>Highest Scored Articles</div>",
         unsafe_allow_html=True,
     )
-    top_df = get_top_scored_articles(engine, limit=7)
+    with error_boundary("Failed to load top articles."):
+        top_df = get_top_scored_articles(engine, limit=7)
     if top_df.empty:
         st.markdown(
             '<div class="empty-state"><span class="empty-state-icon">◇</span>'
@@ -142,7 +148,7 @@ with col_donut:
         "margin-bottom:1rem;'>Score Distribution</div>",
         unsafe_allow_html=True,
     )
-    cat_df = get_score_category_distribution(engine)
+    cat_df = cached_category_distribution(engine)
     fig_donut = make_category_donut(cat_df)
     st.plotly_chart(fig_donut, width="stretch", config={"displayModeBar": False})
 
@@ -169,7 +175,8 @@ render_section_header("Trend Analytics")
 col_trend, col_sources = st.columns(2, gap="large")
 
 with col_trend:
-    trend_df = get_articles_per_day(engine, days=30)
+    with error_boundary():
+        trend_df = get_articles_per_day(engine, days=30)
     st.plotly_chart(
         make_articles_per_day_line(trend_df),
         width="stretch",
@@ -177,7 +184,7 @@ with col_trend:
     )
 
 with col_sources:
-    source_df = get_articles_per_source(engine, top_n=8)
+    source_df = cached_sources(engine, top_n=8)
     st.plotly_chart(
         make_source_bar(source_df),
         width="stretch",
@@ -187,7 +194,8 @@ with col_sources:
 # ── Section 4: Recent Articles ────────────────────────────────────────────────
 render_section_header("Recently Ingested")
 
-latest_df = get_latest_articles(engine, limit=5)
+with error_boundary():
+    latest_df = get_latest_articles(engine, limit=5)
 
 if latest_df.empty:
     st.markdown(
@@ -278,4 +286,4 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
+render_footer()

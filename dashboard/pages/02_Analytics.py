@@ -39,21 +39,25 @@ from dashboard.components.charts import (
     make_score_histogram,
 )
 from dashboard.components.article_card import render_compact_article_row
+from dashboard.components.footer import render_footer
+from dashboard.utils.error_boundary import error_boundary
 from dashboard.utils.formatters import format_number, format_score, format_relative_time
 from analytics.queries import (
-    get_total_article_count,
-    get_todays_article_count,
-    get_unique_source_count,
-    get_average_intelligence_score,
     get_last_updated_time,
-    get_articles_per_source,
     get_articles_per_day,
-    get_score_category_distribution,
-    get_keyword_frequency,
     get_top_scored_articles,
     get_pipeline_health,
     get_publisher_performance,
-    get_max_intelligence_score,
+)
+from dashboard.utils.cached_queries import (
+    cached_total_articles,
+    cached_todays_articles,
+    cached_unique_sources,
+    cached_avg_score,
+    cached_max_score,
+    cached_category_distribution,
+    cached_sources,
+    cached_keyword_freq,
 )
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -93,12 +97,14 @@ render_page_header(
 # =============================================================================
 render_section_header("Executive Summary")
 
-total      = get_total_article_count(engine)
-today      = get_todays_article_count(engine)
-sources    = get_unique_source_count(engine)
-avg_score  = get_average_intelligence_score(engine)
-peak_score = get_max_intelligence_score(engine)
-last_run   = get_last_updated_time(engine)
+with error_boundary("Failed to load analytics data. Please check database connectivity."):
+    with st.spinner("Computing analytics..."):
+        total      = cached_total_articles(engine)
+        today      = cached_todays_articles(engine)
+        sources    = cached_unique_sources(engine)
+        avg_score  = cached_avg_score(engine)
+        peak_score = cached_max_score(engine)
+        last_run   = get_last_updated_time(engine)
 
 k1, k2, k3, k4, k5, k6 = st.columns(6, gap="medium")
 
@@ -123,7 +129,7 @@ render_section_header("Interactive Analytics")
 # Row 1: Source bar + Trend line
 c_src, c_trend = st.columns(2, gap="large")
 with c_src:
-    df_src = get_articles_per_source(engine, top_n=10)
+    df_src = cached_sources(engine, top_n=10)
     st.plotly_chart(make_source_bar(df_src), width="stretch",
                     config={"displayModeBar": False})
 
@@ -136,7 +142,7 @@ with c_trend:
 c_donut, c_kw, c_hist = st.columns(3, gap="large")
 
 with c_donut:
-    df_cat = get_score_category_distribution(engine)
+    df_cat = cached_category_distribution(engine)
     st.plotly_chart(make_category_donut(df_cat), width="stretch",
                     config={"displayModeBar": False})
     # Legend
@@ -150,7 +156,7 @@ with c_donut:
     )
 
 with c_kw:
-    df_kw = get_keyword_frequency(engine, top_n=12)
+    df_kw = cached_keyword_freq(engine, top_n=12)
     st.plotly_chart(make_keyword_bar(df_kw), width="stretch",
                     config={"displayModeBar": False})
 
@@ -306,4 +312,5 @@ if health["raw_count"] > 0 and health["staging_count"] < health["raw_count"]:
         unsafe_allow_html=True,
     )
 
-st.markdown("<div style='height:3rem;'></div>", unsafe_allow_html=True)
+
+render_footer()
