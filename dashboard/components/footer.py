@@ -19,11 +19,11 @@ def render_footer() -> None:
                         max-width:100%; flex-wrap:wrap; gap:2rem;">
                 <div>
                     <div style="font-family:'Cormorant Garamond',Georgia,serif;
-                                font-size:1.15rem; font-weight:600; color:#F7F5F2;
-                                margin-bottom:0.3rem;">
+                                font-size:1.25rem; font-weight:600; color:#F7F5F2;
+                                margin-bottom:0.2rem;">
                         AI Pulse
                     </div>
-                    <div style="font-family:'Inter',sans-serif; font-size:0.72rem;
+                    <div style="font-family:'Inter',sans-serif; font-size:0.75rem;
                                 color:#6B7566; line-height:1.7;">
                         GenAI Industry Trends Warehouse
                     </div>

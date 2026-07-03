@@ -95,14 +95,14 @@ def render_article_card(row: pd.Series, show_score: bool = True) -> None:
         </div>
         <div class="article-description">{description}</div>
         {kw_html}
-        <div style="margin-top:0.8rem;">
+        <div style="margin-top:1.2rem;">
             <a href="{url}" target="_blank" rel="noopener"
                style="font-family:'Inter',sans-serif; font-size:0.72rem;
-                      font-weight:600; letter-spacing:0.05em; text-transform:uppercase;
+                      font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
                       color:#C8A96A; text-decoration:none;
-                      border-bottom:1px solid rgba(200,169,106,0.3);
-                      padding-bottom:1px;
-                      transition:color 180ms ease, border-color 180ms ease;">
+                      border-bottom:1px solid rgba(200,169,106,0.15);
+                      padding-bottom:2px;
+                      transition:color 300ms ease, border-color 300ms ease;">
                 Read Article →
             </a>
         </div>

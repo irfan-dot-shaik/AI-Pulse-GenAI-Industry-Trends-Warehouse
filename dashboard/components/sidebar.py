@@ -84,13 +84,13 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
             st.markdown(
                 f"""
                 <div style="display:flex; align-items:center;
-                            padding: 0.55rem 1rem; margin: 0.1rem 0;
+                            padding: 0.6rem 1rem; margin: 0.15rem 0;
                             border-left: {border_l};
                             background: {bg};
-                            transition: all 180ms ease; cursor:pointer;">
+                            transition: all 300ms ease; cursor:pointer;">
                     <span style="font-family:'Inter',sans-serif;
                                  font-size:0.86rem; font-weight:{weight};
-                                 color:{text_color}; letter-spacing:0.01em;">
+                                 color:{text_color}; letter-spacing:0.02em;">
                         {page_label}
                     </span>
                 </div>

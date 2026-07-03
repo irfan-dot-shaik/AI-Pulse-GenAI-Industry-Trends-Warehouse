@@ -41,11 +41,11 @@ _CSS = """
    ============================================================ */
 :root {
     /* Backgrounds */
-    --bg:           #0F1512;
-    --bg-2:         #17201B;
-    --bg-card:      #1C2721;
-    --bg-card-hover:#21302A;
-    --bg-input:     #192118;
+    --bg:           #0D120F; /* Slightly deeper luxury forest */
+    --bg-2:         #151C18;
+    --bg-card:      #19221D;
+    --bg-card-hover:#1E2923;
+    --bg-input:     #171F1A;
 
     /* Brand */
     --gold:         #C8A96A;
@@ -76,20 +76,20 @@ _CSS = """
     --font-num:     'Space Grotesk', 'Inter', sans-serif;
 
     /* Spacing */
-    --radius:       10px;
-    --radius-sm:    6px;
-    --radius-lg:    14px;
+    --radius:       12px;
+    --radius-sm:    8px;
+    --radius-lg:    16px;
     --radius-pill:  999px;
 
     /* Shadows */
-    --shadow-sm:    0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-    --shadow-card:  0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px var(--border-card);
-    --shadow-hover: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px var(--border-strong);
-    --shadow-gold:  0 0 24px rgba(200,169,106,0.06);
+    --shadow-sm:    0 2px 4px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-card:  0 6px 24px rgba(0,0,0,0.4), 0 0 0 1px var(--border-card);
+    --shadow-hover: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--border-strong);
+    --shadow-gold:  0 0 30px rgba(200,169,106,0.08);
 
     /* Animation */
-    --ease:         cubic-bezier(0.25, 0.1, 0.25, 1);
-    --dur:          180ms;
+    --ease:         cubic-bezier(0.2, 0.0, 0, 1.0);
+    --dur:          300ms;
 }
 
 /* ============================================================
@@ -165,7 +165,7 @@ div[data-testid="metric-container"] {
     background: var(--bg-card) !important;
     border: 1px solid var(--border-card) !important;
     border-radius: var(--radius-lg) !important;
-    padding: 1.5rem 1.6rem 1.4rem !important;
+    padding: 1.8rem 1.8rem 1.6rem !important;
     box-shadow: var(--shadow-card) !important;
     transition: transform var(--dur) var(--ease),
                 box-shadow var(--dur) var(--ease),
@@ -202,11 +202,11 @@ div[data-testid="metric-container"] [data-testid="stMetricLabel"] {
 
 div[data-testid="metric-container"] [data-testid="stMetricValue"] > div {
     font-family: var(--font-num) !important;
-    font-size: 2.1rem !important;
-    font-weight: 600 !important;
+    font-size: 2.3rem !important;
+    font-weight: 500 !important;
     color: var(--text) !important;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
 }
 
 div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
@@ -223,8 +223,8 @@ div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
     background: var(--bg-card);
     border: 1px solid var(--border-card);
     border-radius: var(--radius-lg);
-    padding: 1.4rem 1.6rem;
-    margin-bottom: 0.7rem;
+    padding: 1.8rem 2rem;
+    margin-bottom: 1rem;
     box-shadow: var(--shadow-card);
     transition: transform var(--dur) var(--ease),
                 box-shadow var(--dur) var(--ease),
@@ -255,12 +255,12 @@ div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
 }
 
 .article-title a {
-    font-family: var(--font-body) !important;
-    font-size: 0.98rem;
+    font-family: var(--font-serif) !important;
+    font-size: 1.2rem;
     font-weight: 600;
     color: var(--text) !important;
     text-decoration: none;
-    line-height: 1.5;
+    line-height: 1.4;
     display: block;
     transition: color var(--dur) var(--ease);
 }
@@ -270,9 +270,9 @@ div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
 }
 
 .article-meta {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin: 0.45rem 0 0.55rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin: 0.6rem 0 0.8rem;
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -406,8 +406,8 @@ div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
 .section-header {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    margin: 2.2rem 0 1rem;
+    gap: 1rem;
+    margin: 3rem 0 1.5rem;
 }
 
 .section-label {
