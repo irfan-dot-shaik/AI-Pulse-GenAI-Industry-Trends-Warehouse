@@ -1,13 +1,15 @@
 # AI Pulse — GenAI Industry Trends Warehouse
 
-> **Automatically ingests AI news from public APIs, stores it in a PostgreSQL warehouse, and prepares clean datasets for analytics and dashboards.**
+> **Automatically ingests AI news from public APIs, stores it in a PostgreSQL warehouse, validates and transforms it, and serves it through a production-ready Streamlit analytics dashboard.**
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red)
 ![Pandas](https://img.shields.io/badge/Pandas-2.1-150458?logo=pandas)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.35+-FF4B4B?logo=streamlit)
+![Plotly](https://img.shields.io/badge/Plotly-5.22-3f4f75?logo=plotly)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Week](https://img.shields.io/badge/Week-1%20of%205-orange)
+![Week](https://img.shields.io/badge/Week-2%20of%205-orange)
 
 ---
 
@@ -17,7 +19,7 @@
 
 The project evolves week-by-week from a simple API → PostgreSQL pipeline into a fully deployed, multi-source analytics system with dashboards, containerization, and production-grade practices.
 
-**This repository is Week 1** — the foundation layer.
+**This repository represents Week 2** — The Processing & Analytics UI layer. We have built upon Week 1's raw ingestion by adding data validation, data transformation, AI intelligence scoring, a robust SQL analytics layer, and a professional, interactive Streamlit dashboard.
 
 ---
 
@@ -29,40 +31,64 @@ Analysts and researchers at AI Pulse currently spend **3–5 hours per day** man
 - **Non-reproducible** — no historical data is saved for trend analysis
 - **Slow** — analysis is always behind real-time events
 
-**Solution:** Build a reusable data pipeline that automatically collects AI news every day, stores it in a structured warehouse, and makes it queryable by any analyst with SQL knowledge.
+**Solution:** Build a reusable data pipeline that automatically collects AI news every day, stores it in a structured warehouse, assigns an *AI Intelligence Score* to filter out noise, and presents actionable insights through a premium financial-style Executive Dashboard.
+
+---
+
+## ✨ Features (New in Week 2)
+
+- **AI News Ingestion Pipeline:** Automated ingestion of JSON news data into a structured Raw layer.
+- **PostgreSQL Data Warehouse:** Robust database schema managing both `raw_ai_news` and `stg_ai_news`.
+- **Data Validation & Transformation:** Pandas-based pipeline steps to clean titles, normalize publisher names, and filter out low-quality articles.
+- **AI Intelligence Scoring:** Custom heuristic algorithm assigning a 0-100 score to articles based on keyword density, source reputation, and content depth.
+- **SQL Analytics Layer:** Reusable analytical queries wrapping complex aggregations.
+- **Interactive Streamlit Dashboard:** A multi-page, polished, premium UI consisting of:
+  - **Overview:** Project context and system status.
+  - **News Explorer:** Advanced search, filtering, and pagination over the warehouse.
+  - **Analytics:** Visualizing trends, source distributions, and intelligence score distributions via Plotly.
+  - **Top AI News:** Curated feed of the highest-scoring, most impactful articles.
+  - **Insights:** High-level executive KPIs derived dynamically from the analytics layer.
 
 ---
 
 ## 🏗️ Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                  AI PULSE — WEEK 1 PIPELINE                  │
-└──────────────────────────────────────────────────────────────┘
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     AI PULSE — WEEK 2 ARCHITECTURE                      │
+└─────────────────────────────────────────────────────────────────────────┘
 
   ┌──────────────┐     HTTP GET      ┌─────────────────────┐
   │  GNews API   │ ─────────────────▶│  ingestion/         │
-  │  gnews.io    │  JSON Response    │  gnews_client.py    │
-  └──────────────┘                   └──────────┬──────────┘
-                                                │
-                                      pd.DataFrame
+  └──────────────┘   JSON Response   │  gnews_client.py    │
+                                     └──────────┬──────────┘
                                                 │
                                      ┌──────────▼──────────┐
                                      │  database/          │
-                                     │  warehouse.py       │
-                                     │  (SQLAlchemy ORM)   │
+                                     │  raw_ai_news        │ (Raw Layer)
                                      └──────────┬──────────┘
                                                 │
-                                   INSERT ... ON CONFLICT
-                                    DO NOTHING (upsert)
+                                     ┌──────────▼──────────┐
+                                     │  processing/        │
+                                     │  validator.py       │
+                                     │  transformer.py     │
+                                     │  scorer.py          │
+                                     └──────────┬──────────┘
                                                 │
                                      ┌──────────▼──────────┐
-                                     │  PostgreSQL         │
-                                     │  ai_pulse_db        │
-                                     │  raw_ai_news        │
+                                     │  database/          │
+                                     │  stg_ai_news        │ (Staging Layer)
+                                     └──────────┬──────────┘
+                                                │
+                                     ┌──────────▼──────────┐
+                                     │  analytics/         │
+                                     │  queries.py         │ (SQL Aggregations)
+                                     └──────────┬──────────┘
+                                                │
+                                     ┌──────────▼──────────┐
+                                     │  dashboard/         │ (Streamlit App)
+                                     │  app.py + pages/    │
                                      └─────────────────────┘
-
-  Cross-cutting: config/ + utils/logger.py + tests/
 ```
 
 **Full architecture details:** → [`docs/architecture.md`](docs/architecture.md)
@@ -75,57 +101,42 @@ Analysts and researchers at AI Pulse currently spend **3–5 hours per day** man
 |---|---|---|
 | **Python** | 3.11 | Core language for ingestion and transformation |
 | **requests** | 2.31.0 | HTTP library for calling the GNews API |
-| **pandas** | 2.1.4 | Transform JSON responses into DataFrames |
+| **pandas** | 2.1.4 | Transform JSON responses into DataFrames and clean data |
 | **SQLAlchemy** | 2.0.25 | ORM — define tables as Python classes |
 | **psycopg2-binary** | 2.9.9 | PostgreSQL connector (used by SQLAlchemy) |
-| **python-dotenv** | 1.0.0 | Load `.env` secrets into environment variables |
-| **PostgreSQL** | 16 | Data warehouse (raw storage layer) |
+| **PostgreSQL** | 16 | Data warehouse (raw and staging storage layer) |
+| **Streamlit** | 1.35+ | Interactive web dashboard framework |
+| **Plotly** | 5.22.0 | Advanced interactive data visualization |
 | **pytest** | 7.4.4 | Unit testing framework |
+| **python-dotenv** | 1.0.0 | Load `.env` secrets into environment variables |
 
 ---
 
 ## 📁 Project Structure
 
-```
+```text
 ai-pulse-warehouse/
 │
-├── config/
-│   ├── __init__.py            # Package marker
-│   └── settings.py            # All config: API keys, DB URL, parameters
+├── config/            # Centralized settings & environment variables
+├── database/          # SQLAlchemy models & warehouse engine logic
+├── ingestion/         # API clients (GNews)
+├── processing/        # Data validation, transformation, & AI scoring logic
+├── analytics/         # Reusable SQL analytics & aggregation layer
+├── dashboard/         # Streamlit dashboard application
+│   ├── components/    # Reusable UI components (Sidebar, Footer, Cards)
+│   ├── pages/         # Dashboard pages (Explorer, Analytics, Top News, Insights)
+│   └── utils/         # Dashboard caching and UI formatting helpers
+├── .streamlit/        # Streamlit configuration (theme, server settings)
+├── scripts/           # Standalone verification & utility scripts
+├── sql/               # Sample analytical queries (raw & staging)
+├── tests/             # Unit tests for the data pipeline
+├── utils/             # Cross-cutting utilities (logging)
+├── docs/              # Architecture diagrams & design documents
 │
-├── ingestion/
-│   ├── __init__.py
-│   └── gnews_client.py        # GNews API fetcher → returns pd.DataFrame
-│
-├── database/
-│   ├── __init__.py
-│   ├── models.py              # SQLAlchemy ORM model for raw_ai_news table
-│   └── warehouse.py           # Engine, schema init, idempotent upsert
-│
-├── utils/
-│   ├── __init__.py
-│   └── logger.py              # Centralized logger (console + file)
-│
-├── tests/
-│   ├── __init__.py
-│   └── test_ingestion.py      # 10 unit tests for ingestion layer
-│
-├── docs/
-│   ├── design_doc.md          # Full design document (7 sections)
-│   ├── architecture.md        # Architecture diagram + data flow
-│   └── status_week1.md        # Week 1 status one-pager
-│
-├── sql/
-│   └── sample_queries.sql     # 7 analytical SQL queries
-│
-├── logs/
-│   └── .gitkeep               # Placeholder — actual .log files are gitignored
-│
-├── .env.example               # Template for environment variables
-├── .gitignore                 # Excludes secrets, venv, cache
-├── main.py                    # Pipeline entry point — run this!
-├── requirements.txt           # Pinned Python dependencies
-└── README.md                  # This file
+├── .env.example       # Template for environment variables
+├── main.py            # Pipeline entry point — Ingests & Processes data
+├── requirements.txt   # Pinned Python dependencies
+└── README.md          # This file
 ```
 
 ---
@@ -135,246 +146,95 @@ ai-pulse-warehouse/
 ### Prerequisites
 
 - Python 3.11+
-- PostgreSQL 16 (see installation below)
+- PostgreSQL 16
 - Git
 
 ---
 
-### Step 1: Install PostgreSQL
+### Step 1: Install & Set Up PostgreSQL
 
-**Windows:**
-1. Download the installer: https://www.postgresql.org/download/windows/
-2. Run the installer. Accept defaults.
-3. Set a password for user `postgres` (use `postgres` to match defaults)
-4. Open **pgAdmin** (installed with PostgreSQL)
-5. Create the database:
-   - Right-click "Databases" → Create → Database
-   - Name: `ai_pulse_db`
-   - Owner: `postgres`
-   - Save
-
-**Alternative — using psql command line:**
-```bash
-psql -U postgres
-CREATE DATABASE ai_pulse_db;
-\q
-```
+1. Install PostgreSQL from [postgresql.org](https://www.postgresql.org/download/windows/).
+2. Set a password for user `postgres`.
+3. Open **pgAdmin** or `psql` and create the database:
+   ```sql
+   CREATE DATABASE ai_pulse_db;
+   ```
 
 ---
 
-### Step 2: Clone the Repository
+### Step 2: Clone & Set Up Python
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/ai-pulse-warehouse.git
 cd ai-pulse-warehouse
-```
 
----
-
-### Step 3: Set Up Python Virtual Environment
-
-```bash
-# Create a virtual environment named 'venv'
 python -m venv venv
-
 # Activate it (Windows PowerShell)
 .\venv\Scripts\Activate.ps1
-
-# Activate it (Windows CMD)
-venv\Scripts\activate.bat
-
 # Activate it (macOS/Linux)
 source venv/bin/activate
 
-# You should see (venv) at the start of your terminal prompt
-```
-
----
-
-### Step 4: Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-### Step 5: Configure Environment Variables
+### Step 3: Configure Environment Variables
 
 ```bash
-# Copy the template
 copy .env.example .env        # Windows
 cp .env.example .env          # macOS/Linux
-
-# Open .env in VS Code and fill in your values
-code .env
 ```
-
-Edit `.env`:
-```env
-# Get your free API key at: https://gnews.io (register, go to API key section)
-GNEWS_API_KEY=your_actual_api_key_here
-
-# Database connection (match what you set during PostgreSQL install)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_pulse_db
-```
+Edit `.env` to include your GNews API key and Database URL.
 
 ---
 
-### Step 6: Run the Pipeline
+### Step 4: Run the Pipeline
 
+Ingest raw data and process it into the staging table:
 ```bash
 python main.py
 ```
 
-**Expected output:**
-```
-╔══════════════════════════════════════════════════════════════╗
-║           AI PULSE — GenAI Industry Trends Warehouse         ║
-║                   Data Pipeline — Week 1                     ║
-║          GNews API → Python → Pandas → PostgreSQL           ║
-╚══════════════════════════════════════════════════════════════╝
-
-2026-06-24 18:30:01 | main | INFO     | Pipeline execution started
-2026-06-24 18:30:01 | main | INFO     | STEP 1/5 — Validating configuration
-2026-06-24 18:30:01 | main | INFO     | ✓ All required environment variables are present
-2026-06-24 18:30:01 | main | INFO     | STEP 2/5 — Connecting to PostgreSQL
-2026-06-24 18:30:02 | main | INFO     | Database connection test: PASSED ✓
-2026-06-24 18:30:02 | main | INFO     | STEP 3/5 — Initializing database schema
-2026-06-24 18:30:02 | main | INFO     | Table 'raw_ai_news' is ready
-2026-06-24 18:30:02 | main | INFO     | STEP 4/5 — Fetching AI news from GNews API
-2026-06-24 18:30:04 | main | INFO     | ✓ Fetched 10 articles from GNews API
-2026-06-24 18:30:04 | main | INFO     | STEP 5/5 — Loading data into PostgreSQL warehouse
-2026-06-24 18:30:04 | main | INFO     | ✓ Insert complete: 10 new records inserted, 0 duplicates skipped.
-
-╔══════════════════════════════════════════════════════════════╗
-║                    PIPELINE RUN SUMMARY                      ║
-╠══════════════════════════════════════════════════════════════╣
-║  Status:           SUCCESS ✓                                 ║
-║  Run Duration:     3.24s                                     ║
-║  Articles Fetched: 10                                        ║
-║  New Records:      10                                        ║
-║  Duplicates Skip:  0                                         ║
-║  Total in DB:      10                                        ║
-╚══════════════════════════════════════════════════════════════╝
-```
-
 ---
 
-### Step 7: Run Tests
+### Step 5: Launch the Dashboard
 
 ```bash
-# Run all tests with verbose output
-pytest tests/ -v
+streamlit run dashboard/app.py
 ```
-
-**Expected output:**
-```
-tests/test_ingestion.py::TestFetchAiNews::test_returns_dataframe_on_success PASSED
-tests/test_ingestion.py::TestFetchAiNews::test_dataframe_has_correct_columns PASSED
-tests/test_ingestion.py::TestFetchAiNews::test_url_column_has_correct_values PASSED
-tests/test_ingestion.py::TestFetchAiNews::test_category_is_always_ai PASSED
-tests/test_ingestion.py::TestFetchAiNews::test_articles_without_url_are_skipped PASSED
-tests/test_ingestion.py::TestFetchAiNews::test_returns_none_on_connection_error PASSED
-tests/test_ingestion.py::TestFetchAiNews::test_returns_none_on_http_error PASSED
-tests/test_ingestion.py::TestParseDatetime::test_parses_valid_iso_string PASSED
-tests/test_ingestion.py::TestParseDatetime::test_returns_none_for_empty_string PASSED
-tests/test_ingestion.py::TestParseDatetime::test_returns_none_for_none_input PASSED
-tests/test_ingestion.py::TestParseDatetime::test_returns_none_for_invalid_format PASSED
-
-11 passed in 0.42s
-```
-
-> Tests run WITHOUT an API key or database connection — they use mocking.
-
----
-
-### Step 8: Query the Data
-
-Open **pgAdmin** or **psql** and run queries from `sql/sample_queries.sql`:
-
-```sql
--- Total articles in the warehouse
-SELECT COUNT(*) AS total_articles FROM raw_ai_news;
-
--- Latest 10 articles
-SELECT title, source, published_at FROM raw_ai_news ORDER BY published_at DESC LIMIT 10;
-
--- Top sources by article count
-SELECT source, COUNT(*) AS count FROM raw_ai_news GROUP BY source ORDER BY count DESC;
-
--- Articles per day
-SELECT DATE(published_at) AS day, COUNT(*) AS articles FROM raw_ai_news GROUP BY day ORDER BY day DESC;
-```
+*The Streamlit dashboard will automatically open in your browser at `http://localhost:8501`, providing a polished, interactive interface to explore your warehouse data.*
 
 ---
 
 ## 🗄️ Database Schema
 
-```sql
-Table: raw_ai_news
-┌────────────────┬──────────────────────────────────────────────────────┐
-│ Column         │ Type                  │ Notes                        │
-├────────────────┼───────────────────────┼──────────────────────────────┤
-│ id             │ SERIAL PRIMARY KEY    │ Auto-increment               │
-│ title          │ TEXT NOT NULL         │ Article headline             │
-│ source         │ TEXT                  │ News source name             │
-│ author         │ TEXT                  │ Author (default: "Unknown")  │
-│ description    │ TEXT                  │ Article subtitle             │
-│ published_at   │ TIMESTAMPTZ           │ When published (UTC)         │
-│ url            │ TEXT UNIQUE NOT NULL  │ Idempotency key              │
-│ category       │ VARCHAR(50)           │ "AI" for all Week 1 records  │
-│ ingested_at    │ TIMESTAMPTZ DEFAULT   │ When WE loaded this record   │
-│                │ NOW()                 │                              │
-└────────────────┴───────────────────────┴──────────────────────────────┘
-```
+The pipeline now utilizes two primary tables representing a Medallion-style architecture:
 
----
-
-## 📊 Data Sources
-
-| Source | API | Free Tier | Coverage |
-|---|---|---|---|
-| **GNews** (Week 1) | `gnews.io/api/v4/search` | 100 req/day, 10 articles/req | 60,000+ news sources |
-| Reddit (Week 3) | Reddit API | Generous free tier | r/MachineLearning, r/artificial |
-| Hacker News (Week 3) | `hacker-news.firebaseio.com` | Unlimited | Tech/startup news |
+1. **`raw_ai_news`**: Append-only, untransformed JSON payload mapping.
+2. **`stg_ai_news`**: Cleaned, validated, normalized data enriched with an `intelligence_score`.
 
 ---
 
 ## 🗺️ Roadmap
 
-| Week | Theme | Key Additions |
-|---|---|---|
-| **Week 1** *(current)* | Foundation | GNews → PostgreSQL raw layer |
-| **Week 2** | Core Build | dbt transformations, ADRs, staging + mart tables |
-| **Week 3** | Extension | Reddit/HN ingestion, data quality tests |
-| **Week 4** | Deploy | Streamlit dashboard, Docker, live URL |
-| **Week 5** | Showcase | Loom video, reflection, resume bullets |
+| Status | Week | Theme | Key Additions |
+|:---:|---|---|---|
+| ✅ | **Week 1** | Foundation | GNews API → PostgreSQL `raw_ai_news` |
+| ✅ | **Week 2** | Processing & UI | Validation, AI Scoring, `stg_ai_news`, Streamlit Dashboard |
+| ⬜ | **Week 3** | Extension | Reddit/HackerNews ingestion, Data Quality Tests |
+| ⬜ | **Week 4** | Deploy | Dockerization, CI/CD, Live URL deployment |
+| ⬜ | **Week 5** | Showcase | Portfolio presentation, Loom video, Resume bullets |
 
 ---
 
-## 📝 Week 1 Key Learnings
+## 📝 Key Learnings (Week 1 & 2)
 
-1. **APIs are just HTTP requests** — `requests.get(url, params={"apikey": ...})`
-2. **Environment variables > hardcoding** — never put secrets in code
-3. **Idempotency is critical in DE** — `ON CONFLICT DO NOTHING` prevents duplicates
-4. **ORM abstracts SQL** — define tables as Python classes, SQLAlchemy writes the SQL
-5. **Logging > printing** — timestamps, levels, and file output for production code
-6. **Unit tests with mocking** — test without real APIs or databases
-7. **Data Engineering naming conventions** — `raw_` → `stg_` → `fct_`
-8. **Separation of concerns** — each module has one job
-
----
-
-## 🔧 Troubleshooting
-
-| Error | Cause | Fix |
-|---|---|---|
-| `Missing required environment variables` | `.env` file missing or `GNEWS_API_KEY` not set | Copy `.env.example` to `.env` and fill values |
-| `Cannot connect to PostgreSQL` | PostgreSQL not running | Start PostgreSQL service in Windows Services |
-| `Database "ai_pulse_db" does not exist` | DB not created | Run `CREATE DATABASE ai_pulse_db;` in psql |
-| `401 Unauthorized from GNews API` | Invalid API key | Check key at gnews.io → Dashboard |
-| `429 Too Many Requests` | Free tier limit hit | Wait until midnight UTC for reset |
+1. **Idempotency is critical:** `ON CONFLICT DO NOTHING` prevents duplicates during automated ingestion.
+2. **Separation of Concerns:** Splitting code into `ingestion/`, `processing/`, `database/`, and `analytics/` creates a scalable, testable architecture.
+3. **Medallion Architecture:** Keeping Raw data distinct from Staging/Clean data ensures we can always reprocess history without data loss.
+4. **Data Validation:** Assuming APIs return perfect data is dangerous; Pandas `.dropna()` and type enforcement prevent downstream warehouse corruption.
+5. **UI/UX in Data Engineering:** A highly polished, robust frontend (Streamlit) bridges the gap between raw backend databases and business stakeholders.
 
 ---
 
@@ -387,6 +247,4 @@ MIT License — free to use, modify, and distribute.
 ## 🙏 Acknowledgements
 
 - **GNews API** — gnews.io — for providing free AI news data
-- **SQLAlchemy** — for making database work pythonic
-- **Faculty & Mentors** — for the structured internship framework
-- Built as part of **H1 — APIs to Warehouse**, Foundations of Data Engineering Internship (June–July 2026)
+- Built as part of the **Foundations of Data Engineering Internship** (June–July 2026)
