@@ -101,15 +101,12 @@ render_page_header(
 )
 
 # =============================================================================
-# FILTER PANEL
 # =============================================================================
-# All filters live in a single styled panel above the results.
+# All filters live above the results.
 # Using st.columns() for horizontal layout avoids sidebar clutter.
 # =============================================================================
 
-st.markdown('<div class="filter-panel">', unsafe_allow_html=True)
-
-fc1, fc2, fc3, fc4, fc5 = st.columns([3, 2, 2, 2, 1], gap="medium")
+fc1, fc2, fc3, fc4, fc5 = st.columns([4, 3, 3, 3, 2], gap="medium")
 
 with fc1:
     keyword = st.text_input(
@@ -148,7 +145,7 @@ with fc4:
     )
 
 with fc5:
-    st.markdown("<div style='height:1.68rem;'></div>", unsafe_allow_html=True)
+    st.html("<div style='height:1.68rem;'></div>")
     reset = st.button("Reset", key="explorer_reset", use_container_width=True)
 
 # Score filter — full-width slider below the row
@@ -160,7 +157,6 @@ score_min, score_max = st.slider(
     help="Filter articles by their AI Intelligence Score (0 = weakest, 100 = strongest).",
 )
 
-st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Handle Reset ──────────────────────────────────────────────────────────────
 if reset:
@@ -319,7 +315,7 @@ for _, row in page_df.iterrows():
 # PAGINATION CONTROLS
 # =============================================================================
 
-st.markdown("<div style='height:1.2rem;'></div>", unsafe_allow_html=True)
+st.html("<div style='height:1.2rem;'></div>")
 
 if total_pages > 1:
     # Range of page numbers to show (show ±2 around current page)
@@ -344,10 +340,7 @@ if total_pages > 1:
     for pnum in show_range:
         if prev_num is not None and pnum > prev_num + 1:
             with pag_cols[col_idx]:
-                st.markdown(
-                    "<div style='text-align:center;color:#6B7566;padding-top:0.45rem;'>…</div>",
-                    unsafe_allow_html=True,
-                )
+                st.html("<div style='text-align:center;color:#6B7566;padding-top:0.45rem;'>…</div>")
             col_idx += 1
         with pag_cols[col_idx]:
             is_cur = pnum == current_page

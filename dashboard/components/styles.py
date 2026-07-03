@@ -202,11 +202,13 @@ div[data-testid="metric-container"] [data-testid="stMetricLabel"] {
 
 div[data-testid="metric-container"] [data-testid="stMetricValue"] > div {
     font-family: var(--font-num) !important;
-    font-size: 2.3rem !important;
+    font-size: clamp(1.6rem, 2.8vw, 2.3rem) !important;
     font-weight: 500 !important;
     color: var(--text) !important;
     letter-spacing: -0.03em;
     line-height: 1.2;
+    white-space: normal !important;
+    text-overflow: unset !important;
 }
 
 div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
@@ -599,6 +601,7 @@ button[data-baseweb="tab"][aria-selected="true"] {
 #MainMenu { visibility: hidden; }
 footer    { visibility: hidden; }
 header[data-testid="stHeader"] { background: transparent; border-bottom: 1px solid var(--border); }
+[data-testid="stSidebarNav"] { text-transform: capitalize; }
 
 /* ============================================================
    STREAMLIT ALERTS — match theme
@@ -635,6 +638,7 @@ div[data-testid="stSlider"] [data-baseweb="slider"] [data-testid="stTickBar"] {
     color: var(--text-muted) !important;
     font-size: 0.72rem !important;
 }
+
 </style>
 """
 

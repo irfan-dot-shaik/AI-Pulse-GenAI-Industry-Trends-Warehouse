@@ -109,9 +109,7 @@ with k5:
 # SECTION 5 — Quick Filters  (placed before Section 2 for UX flow)
 # =============================================================================
 render_section_header("Quick Filters")
-
-st.markdown('<div class="filter-panel">', unsafe_allow_html=True)
-qf1, qf2, qf3, qf4, qf5 = st.columns([3, 2, 2, 2, 1], gap="medium")
+qf1, qf2, qf3, qf4, qf5 = st.columns([4, 3, 3, 3, 2], gap="medium")
 
 with qf1:
     kw = st.text_input("Search", placeholder="OpenAI, Claude, Gemini…",
@@ -131,13 +129,12 @@ with qf4:
                            ["Highest Score", "Newest First"],
                            key="top_sort")
 with qf5:
-    st.markdown("<div style='height:1.68rem;'></div>", unsafe_allow_html=True)
+    st.html("<div style='height:1.68rem;'></div>")
     if st.button("Reset", key="top_reset", use_container_width=True):
         for k in ["top_kw","top_src","top_cat","top_sort"]:
             st.session_state.pop(k, None)
         st.rerun()
 
-st.markdown('</div>', unsafe_allow_html=True)
 
 # Resolve filter values
 kw_val  = kw.strip()
@@ -169,13 +166,12 @@ if articles_df.empty:
     )
 else:
     count_label = format_number(len(articles_df))
-    st.markdown(
+    extra_text = f"· <strong style='color:#C8A96A;'>{kw_val}</strong>" if kw_val else ""
+    st.html(
         f"""<div style="font-family:'Space Grotesk',sans-serif;font-size:0.78rem;
                     color:#6B7566;margin-bottom:1rem;">
-            Showing {count_label} article{'s' if len(articles_df) != 1 else ''}
-            {f'· <strong style="color:#C8A96A;">{kw_val}</strong>' if kw_val else ''}
-        </div>""",
-        unsafe_allow_html=True,
+            Showing {count_label} article{'s' if len(articles_df) != 1 else ''} {extra_text}
+        </div>"""
     )
     for _, row in articles_df.iterrows():
         render_article_card(row, show_score=True)

@@ -58,7 +58,7 @@ _LAYOUT = dict(
     paper_bgcolor=_PAPER,
     plot_bgcolor=_BG,
     font=dict(family="'Space Grotesk', 'Inter', sans-serif", color=_MUTED, size=12),
-    margin=dict(l=16, r=16, t=44, b=16),
+    margin=dict(l=24, r=24, t=56, b=24),
     legend=dict(
         bgcolor="rgba(28,39,33,0.8)",
         bordercolor=_BORDER,

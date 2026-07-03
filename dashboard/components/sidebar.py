@@ -98,23 +98,23 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
                 unsafe_allow_html=True,
             )
 
-        # ── Database Status ──────────────────────────────────────────
+        # ── Database Status & Health ─────────────────────────────────
         db_ok = is_db_connected(engine)
 
         st.markdown(
             f"""
             <div style="border-top: 1px solid rgba(200,169,106,0.10);
-                        margin-top: 1.2rem; padding: 1rem 1rem 0.5rem;">
+                        margin-top: 2rem; padding-top: 1rem;">
                 <div style="font-family:'Inter',sans-serif; font-size:0.65rem;
                             font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
                             color:#6B7566; margin-bottom:0.7rem;">
                     System Status
                 </div>
-                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.8rem;">
                     <span class="status-dot {'online' if db_ok else 'offline'}"></span>
                     <span style="font-family:'Inter',sans-serif; font-size:0.78rem;
                                  color:{'#6E9F67' if db_ok else '#B35C4A'}; font-weight:500;">
-                        {'PostgreSQL · Connected' if db_ok else 'Database · Offline'}
+                        {'PostgreSQL Connected' if db_ok else 'Database Offline'}
                     </span>
                 </div>
             </div>
@@ -122,42 +122,19 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
             unsafe_allow_html=True,
         )
 
-        # ── Pipeline Health ──────────────────────────────────────────
         if db_ok and engine is not None:
             health = get_pipeline_health(engine)
-
             st.markdown(
                 f"""
-                <div style="margin: 0 0 0.5rem; padding: 0 1rem;">
-                    <div class="health-card">
-                        <div class="health-row">
+                <div style="margin-bottom: 2rem;">
+                    <div class="health-card" style="border:none; background:transparent;">
+                        <div class="health-row" style="padding:0.3rem 0; border:none; background:transparent;">
                             <span class="label">Raw Layer</span>
                             <span class="value">{format_number(health['raw_count'])}</span>
                         </div>
-                        <div class="health-row">
-                            <span class="label">Staged</span>
+                        <div class="health-row" style="padding:0.3rem 0; border:none; background:transparent;">
+                            <span class="label">Staging</span>
                             <span class="value">{format_number(health['staging_count'])}</span>
-                        </div>
-                        <div class="health-row">
-                            <span class="label">Avg. Score</span>
-                            <span class="value">{health['avg_score']:.1f}</span>
-                        </div>
-                        <div class="health-row">
-                            <span class="label">Last Run</span>
-                            <span class="value" style="font-size:0.70rem; letter-spacing:0;">{health['last_run']}</span>
-                        </div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                """
-                <div style="padding: 0 1rem 0.5rem;">
-                    <div class="health-card">
-                        <div style="padding:0.8rem;font-size:0.78rem;color:#B35C4A;text-align:center;">
-                            Run python main.py to populate data
                         </div>
                     </div>
                 </div>
@@ -165,19 +142,27 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
                 unsafe_allow_html=True,
             )
 
-        # ── Footer ───────────────────────────────────────────────────
+        # ── Footer / Developer ───────────────────────────────────────
+        last_run = health['last_run'] if (db_ok and engine is not None) else "Unknown"
+        
         st.markdown(
-            """
-            <div style="position:absolute; bottom:0; left:0; right:0;
-                        padding:1rem; border-top: 1px solid rgba(200,169,106,0.08);
-                        background: rgba(15,21,18,0.5);">
-                <div style="font-family:'Inter',sans-serif; font-size:0.68rem;
-                            color:#6B7566; line-height:1.7;">
-                    <div style="color:#A9B1A6; font-weight:600; margin-bottom:0.15rem;">
-                        Shaik Irfan
+            f"""
+            <div style="border-top: 1px solid rgba(200,169,106,0.10);
+                        margin-top: 2rem; padding: 1rem 0;
+                        background: transparent;">
+                <div style="font-family:'Inter',sans-serif; font-size:0.65rem;
+                            font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+                            color:#6B7566; margin-bottom:0.7rem;">
+                    Developer
+                </div>
+                <div style="font-family:'Inter',sans-serif; font-size:0.78rem;
+                            color:#A9B1A6; line-height:1.7;">
+                    <div style="font-weight:600; color:#F7F5F2;">Shaik Irfan</div>
+                    <div>TBC CSE AI & DE</div>
+                    <div>Data Engineering - Week 2</div>
+                    <div style="margin-top:0.5rem; font-size:0.7rem; color:#6B7566;">
+                        Last Updated: <span style="font-family:'Space Grotesk',sans-serif;">{last_run}</span>
                     </div>
-                    B.Tech CSE-AIDE · Foundations of<br>
-                    Data Engineering · v2.0
                 </div>
             </div>
             """,
