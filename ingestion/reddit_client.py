@@ -44,6 +44,16 @@ import pandas as pd
 from datetime import timezone
 from typing import Optional
 
+# PRAW (Python Reddit API Wrapper) — required for Reddit ingestion.
+# Imported at module level so it can be mocked in unit tests.
+# If praw is not installed, Reddit ingestion is disabled gracefully.
+try:
+    import praw
+    _PRAW_AVAILABLE = True
+except ImportError:
+    praw = None  # type: ignore[assignment]
+    _PRAW_AVAILABLE = False
+
 from config.settings import (
     REDDIT_CLIENT_ID,
     REDDIT_CLIENT_SECRET,
@@ -172,14 +182,13 @@ def fetch_reddit_news(
     # -------------------------------------------------------------------------
     # Step 3: Initialise PRAW Reddit instance
     # -------------------------------------------------------------------------
-    # CONCEPT — PRAW ReadonlyReddit:
-    #   We use praw.Reddit() in read-only mode (no username/password).
-    #   This is sufficient for fetching public posts. The client_id and
-    #   client_secret identify our application to Reddit's API servers.
-    # -------------------------------------------------------------------------
-    try:
-        import praw  # Imported here to avoid ImportError when praw is not installed
+    if not _PRAW_AVAILABLE or praw is None:
+        logger.error(
+            "[Reddit] PRAW is not installed. Run: pip install praw==7.7.1"
+        )
+        return None
 
+    try:
         reddit = praw.Reddit(
             client_id=REDDIT_CLIENT_ID,
             client_secret=REDDIT_CLIENT_SECRET,
@@ -188,11 +197,6 @@ def fetch_reddit_news(
         reddit.read_only = True  # Enforce read-only mode explicitly
         logger.info("[Reddit] PRAW Reddit instance created (read-only mode)")
 
-    except ImportError:
-        logger.error(
-            "[Reddit] PRAW is not installed. Run: pip install praw==7.7.1"
-        )
-        return None
     except Exception as e:
         logger.error(f"[Reddit] Failed to initialise PRAW: {e}")
         return None
