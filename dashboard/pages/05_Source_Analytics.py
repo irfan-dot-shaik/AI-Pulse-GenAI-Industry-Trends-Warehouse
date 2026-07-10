@@ -74,11 +74,9 @@ PLOTLY_LAYOUT = dict(
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(family="Inter, sans-serif", color=_TEXT, size=12),
     margin=dict(l=0, r=0, t=30, b=0),
-    showlegend=True,
-    # NOTE: 'legend' is intentionally NOT included here.
-    # Each chart that needs a specific legend layout passes its own legend=dict(...)
-    # directly to update_layout(). Keeping it here caused TypeError: 'got multiple
-    # values for keyword argument legend' when **PLOTLY_LAYOUT was unpacked.
+    # NOTE: 'legend' and 'showlegend' are intentionally NOT included here.
+    # Each chart that needs a specific legend layout passes its own kwargs
+    # directly to update_layout(). Keeping them here caused TypeError.
 )
 
 
@@ -252,7 +250,7 @@ with col_donut:
         legend=dict(orientation="h", yanchor="top", y=-0.1, xanchor="center", x=0.5,
                     font=dict(color=_TEXT, size=11)),
     )
-    st.plotly_chart(fig_donut, use_container_width=True)
+    st.plotly_chart(fig_donut, width="stretch")
 
 with col_bar:
     st.markdown("##### Articles per Source")
@@ -279,7 +277,7 @@ with col_bar:
         xaxis=dict(gridcolor="rgba(200,169,106,0.06)", color=_MUTED),
         yaxis=dict(gridcolor="rgba(0,0,0,0)", color=_MUTED),
     )
-    st.plotly_chart(fig_hbar, use_container_width=True)
+    st.plotly_chart(fig_hbar, width="stretch")
 
 st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
@@ -325,7 +323,7 @@ with col_avg:
         xaxis=dict(gridcolor="rgba(200,169,106,0.06)", color=_MUTED),
         yaxis=dict(color=_MUTED),
     )
-    st.plotly_chart(fig_avg, use_container_width=True)
+    st.plotly_chart(fig_avg, width="stretch")
 
 with col_max:
     st.markdown("##### Max Intelligence Score")
@@ -352,7 +350,7 @@ with col_max:
         xaxis=dict(gridcolor="rgba(200,169,106,0.06)", color=_MUTED),
         yaxis=dict(color=_MUTED),
     )
-    st.plotly_chart(fig_max, use_container_width=True)
+    st.plotly_chart(fig_max, width="stretch")
 
 st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
@@ -398,7 +396,7 @@ if daily_source_df is not None and not daily_source_df.empty:
             title_font=dict(color=_MUTED, size=11),
         ),
     )
-    st.plotly_chart(fig_trend, use_container_width=True)
+    st.plotly_chart(fig_trend, width="stretch")
 else:
     st.info("Trend data requires at least 2 days of ingestion history.")
 
@@ -442,7 +440,7 @@ if keywords_df is not None and not keywords_df.empty:
                 xaxis=dict(gridcolor="rgba(200,169,106,0.06)", color=_MUTED),
                 yaxis=dict(color=_MUTED),
             )
-            st.plotly_chart(fig_kw, use_container_width=True)
+            st.plotly_chart(fig_kw, width="stretch")
 else:
     st.info(
         "Keyword data is not available. "
