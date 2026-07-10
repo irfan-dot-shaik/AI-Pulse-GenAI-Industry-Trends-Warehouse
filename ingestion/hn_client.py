@@ -46,6 +46,7 @@
 
 import requests
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 from config.settings import (
@@ -65,8 +66,17 @@ HN_SOURCE_NAME: str = "Hacker News"
 # Category tag for all HN articles
 HN_CATEGORY: str = "AI"
 
-# HTTP request timeout in seconds
-_REQUEST_TIMEOUT: int = 15
+# HTTP request timeout in seconds (per individual story request)
+_REQUEST_TIMEOUT: int = 10
+
+# Number of worker threads for concurrent story fetches.
+# 20 workers means we fire 20 requests simultaneously.
+# HN Firebase API has no documented rate limit for reads.
+# CONCEPT — ThreadPoolExecutor:
+#   Python's GIL doesn't block I/O-bound threads. Each thread waits for the
+#   HTTP response independently. With 20 workers and 100 items to fetch,
+#   we complete in ~5 rounds instead of 100 sequential rounds.
+_CONCURRENT_WORKERS: int = 20
 
 
 # =============================================================================
@@ -241,21 +251,50 @@ def fetch_hn_news(limit: int = HN_FETCH_LIMIT) -> Optional[pd.DataFrame]:
         logger.warning("[HN] All feeds returned empty. Check network connection.")
         return None
 
+    inspect_ids = all_ids[:HN_INSPECT_LIMIT]
+    logger.info(f"[HN] Will inspect {len(inspect_ids)} unique IDs concurrently ({_CONCURRENT_WORKERS} workers)")
+
     # -------------------------------------------------------------------------
-    # Step 3: Inspect the first HN_INSPECT_LIMIT unique IDs
-    # Filter by AI keyword in title to avoid fetching full JSON for every story
+    # Step 3: Concurrent batch-fetch all story details
     # -------------------------------------------------------------------------
+    # CONCEPT — Why concurrent here?
+    #   The old sequential loop made 100 HTTP calls one-by-one:
+    #     100 calls × ~2s/call = ~200 seconds total
+    #   With ThreadPoolExecutor(20 workers):
+    #     100 calls ÷ 20 workers ≈ 5 rounds × ~2s = ~10 seconds total
+    #   This is a 10–20× speedup with zero change to the filtering logic.
+    #
+    # Each call is I/O-bound (waiting for HTTP response), so Python threads
+    # are ideal — the GIL is released during network waits.
+    # -------------------------------------------------------------------------
+    items: dict[int, dict] = {}  # story_id → item dict, for the IDs that returned data
+
+    with ThreadPoolExecutor(max_workers=_CONCURRENT_WORKERS) as executor:
+        future_to_id = {
+            executor.submit(_fetch_story, story_id): story_id
+            for story_id in inspect_ids
+        }
+        for future in as_completed(future_to_id):
+            story_id = future_to_id[future]
+            try:
+                item = future.result()
+                if item is not None:
+                    items[story_id] = item
+            except Exception as e:
+                logger.debug(f"[HN] Future error for story {story_id}: {e}")
+
+    logger.info(f"[HN] Concurrent fetch complete: {len(items)}/{len(inspect_ids)} stories returned data")
+
+    # -------------------------------------------------------------------------
+    # Step 4: Filter AI-relevant stories in original feed order
+    # -------------------------------------------------------------------------
+    # We iterate inspect_ids (not items.keys()) to preserve the original
+    # feed ordering: topstories > beststories > newstories.
     records = []
-    inspected = 0
     ai_found = 0
 
-    for story_id in all_ids[:HN_INSPECT_LIMIT]:
-        inspected += 1
-
-        # Quick-check: we can't filter by title without fetching the item.
-        # We fetch each item and filter AFTER getting the title.
-        # This is the minimal approach — HN doesn't expose titles in the feed list.
-        item = _fetch_story(story_id)
+    for story_id in inspect_ids:
+        item = items.get(story_id)
         if item is None:
             continue
 
@@ -268,61 +307,42 @@ def fetch_hn_news(limit: int = HN_FETCH_LIMIT) -> Optional[pd.DataFrame]:
             continue
 
         ai_found += 1
-        logger.debug(f"[HN] AI story found [{ai_found}]: {title[:70]}...")
+        logger.debug(f"[HN] AI story [{ai_found}]: {title[:70]}...")
 
-        # Map HN item fields to our standard 7-column pipeline schema
-        record = {
-            # Title of the story
-            "title": title,
-
-            # Source: always "Hacker News" for all HN articles
-            "source": HN_SOURCE_NAME,
-
-            # Author: HN username from the "by" field
-            # HN always provides this for live stories
-            "author": normalize_text(item.get("by", ""), default="Unknown"),
-
-            # Description: HN doesn't have descriptions (it's a link aggregator).
-            # We leave this None — the validator allows None descriptions,
-            # and the scorer simply assigns minimum content-length points.
-            "description": None,
-
-            # published_at: Unix timestamp → UTC datetime
-            "published_at": parse_unix_timestamp(item.get("time")),
-
-            # URL: the external article URL (already filtered — guaranteed non-None)
-            "url": item.get("url", "").strip(),
-
-            # Category: always "AI" for our pipeline
-            "category": HN_CATEGORY,
-        }
-
-        # Final safety check: skip if URL ended up empty after stripping
-        if not record["url"]:
-            logger.debug(f"[HN] Skipping story with empty URL after strip: {title[:50]}")
+        url = item.get("url", "").strip()
+        if not url:
+            logger.debug(f"[HN] Skipping story with empty URL: {title[:50]}")
             continue
 
+        record = {
+            "title":        title,
+            "source":       HN_SOURCE_NAME,
+            "author":       normalize_text(item.get("by", ""), default="Unknown"),
+            "description":  None,
+            "published_at": parse_unix_timestamp(item.get("time")),
+            "url":          url,
+            "category":     HN_CATEGORY,
+        }
         records.append(record)
 
-        # Stop once we've collected enough AI articles
         if len(records) >= limit:
             break
 
     logger.info(
-        f"[HN] Inspected {inspected} stories, "
+        f"[HN] Inspected {len(inspect_ids)} stories, "
         f"found {ai_found} AI-relevant, "
         f"returning {len(records)}"
     )
 
     if not records:
         logger.warning(
-            "[HN] No AI-relevant stories found in the top stories. "
-            f"Inspected {inspected} stories across topstories/beststories/newstories."
+            "[HN] No AI-relevant stories found. "
+            f"Inspected {len(inspect_ids)} stories across topstories/beststories/newstories."
         )
         return None
 
     # -------------------------------------------------------------------------
-    # Step 4: Build DataFrame (identical schema to gnews_client.py output)
+    # Step 5: Build DataFrame (identical schema to gnews_client.py output)
     # -------------------------------------------------------------------------
     df = pd.DataFrame(records)
     logger.info(f"[HN] DataFrame shape: {df.shape[0]} rows × {df.shape[1]} columns")

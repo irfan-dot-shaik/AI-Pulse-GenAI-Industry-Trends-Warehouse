@@ -254,13 +254,19 @@ def fetch_ai_news() -> Optional[pd.DataFrame]:
             # Title of the news article
             "title": article.get("title", "").strip() or "No Title",
 
-            # Source name — nested inside source.name in the JSON
-            # We use .get() with a nested default to avoid KeyError if "source" is missing
-            "source": (article.get("source") or {}).get("name", "Unknown Source"),
+            # WEEK 3 CHANGE: source now represents the INGESTION SYSTEM ("GNews"),
+            # not the individual publisher outlet (TechCrunch, Reuters, etc.).
+            # This keeps the source column consistent with HN ("Hacker News") and
+            # Reddit ("Reddit/MachineLearning") so the Source Analytics page
+            # correctly groups by pipeline instead of by publisher.
+            "source": "GNews",
 
-            # GNews does not provide author. We default to "Unknown".
-            # Week 3 note: Reddit API provides author — we'll use it then.
-            "author": article.get("author", "Unknown"),
+            # Publisher outlet name stored in author.
+            # GNews provides article["source"]["name"] = "TechCrunch" etc.
+            # GNews rarely provides an actual journalist author name (it's usually
+            # empty or missing). Using the publisher name here gives the dashboard
+            # a meaningful value in the author/publisher column.
+            "author": (article.get("source") or {}).get("name", "Unknown"),
 
             # Short description / subtitle of the article
             "description": article.get("description", "").strip() or None,
@@ -277,7 +283,6 @@ def fetch_ai_news() -> Optional[pd.DataFrame]:
             "url": article.get("url", ""),
 
             # Category tag — always "AI" for this pipeline
-            # In Week 3, you'll add "CRYPTO", "TECH" etc. from other sources
             "category": GNEWS_CATEGORY,
         }
 
