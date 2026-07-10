@@ -171,8 +171,6 @@ pytest tests/ -v
 
 ---
 
-## 🎓 Mentor Presentation
-See [docs/MENTOR_PRESENTATION.md](docs/MENTOR_PRESENTATION.md) for the executive summary, Q&A prep, and technical talking points.
 
 ---
 
