@@ -47,7 +47,7 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
                 <div style="font-family:'Inter',sans-serif;
                             font-size: 0.72rem; color: #6B7566;
                             margin-top: 0.5rem; line-height: 1.5;">
-                    Data Engineering · Week 2
+                    Data Engineering · Week 3
                 </div>
             </div>
             """,
@@ -71,7 +71,9 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
             ("Explorer",    "News Explorer"),
             ("Analytics",   "Analytics"),
             ("Top AI News", "Top AI News"),
+            ("Source Analytics", "Source Analytics"),
             ("Insights",    "Insights"),
+            ("About",       "About"),
         ]
 
         for page_key, page_label in nav_items:
@@ -159,7 +161,7 @@ def render_sidebar(engine: Engine, current_page: str = "Home") -> None:
                             color:#A9B1A6; line-height:1.7;">
                     <div style="font-weight:600; color:#F7F5F2;">Shaik Irfan</div>
                     <div>TBC CSE AI & DE</div>
-                    <div>Data Engineering - Week 2</div>
+                    <div>Data Engineering - Week 3</div>
                     <div style="margin-top:0.5rem; font-size:0.7rem; color:#6B7566;">
                         Last Updated: <span style="font-family:'Space Grotesk',sans-serif;">{last_run}</span>
                     </div>

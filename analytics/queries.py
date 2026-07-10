@@ -31,7 +31,6 @@
 # =============================================================================
 
 import pandas as pd                          # DataFrame return type
-from datetime import datetime, timezone      # For date calculations
 from sqlalchemy.engine import Engine         # Type hint for DB engine
 from sqlalchemy import text                  # For raw SQL execution
 

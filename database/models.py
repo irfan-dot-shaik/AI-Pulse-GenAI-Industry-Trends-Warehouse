@@ -61,7 +61,6 @@ from sqlalchemy.sql import func       # SQL functions like func.now()
 
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models in this project."""
-    pass
 
 
 # =============================================================================

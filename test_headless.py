@@ -1,5 +1,4 @@
 from streamlit.testing.v1 import AppTest
-import json
 
 at = AppTest.from_file("dashboard/pages/03_Top_AI_News.py")
 at.run()

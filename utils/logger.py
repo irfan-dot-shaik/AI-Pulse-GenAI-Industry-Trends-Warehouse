@@ -33,7 +33,6 @@
 
 import logging                   # Built-in Python logging module
 import sys                       # Built-in: access to stdout (console output)
-from pathlib import Path         # Built-in: clean file path handling
 
 # Import our centralized config so log level and file path come from settings
 from config.settings import LOG_LEVEL, LOG_FILE_PATH

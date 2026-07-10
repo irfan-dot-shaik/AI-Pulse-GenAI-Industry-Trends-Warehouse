@@ -36,11 +36,11 @@ from dashboard.components.charts import (
     make_keyword_bar,
     make_category_donut,
 )
-from dashboard.utils.formatters import format_number, format_score
 from dashboard.components.footer import render_footer
 from analytics.queries import (
     get_last_updated_time,
 )
+from dashboard.utils.formatters import format_number
 from dashboard.utils.cached_queries import (
     cached_avg_score,
     cached_max_score,

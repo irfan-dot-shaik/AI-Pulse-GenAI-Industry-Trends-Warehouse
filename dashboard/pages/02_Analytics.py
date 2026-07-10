@@ -41,7 +41,7 @@ from dashboard.components.charts import (
 from dashboard.components.article_card import render_compact_article_row
 from dashboard.components.footer import render_footer
 from dashboard.utils.error_boundary import error_boundary
-from dashboard.utils.formatters import format_number, format_score, format_relative_time
+from dashboard.utils.formatters import format_number, format_score
 from analytics.queries import (
     get_last_updated_time,
     get_articles_per_day,

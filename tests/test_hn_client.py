@@ -15,7 +15,6 @@
 #
 # =============================================================================
 
-import pytest
 import pandas as pd
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone

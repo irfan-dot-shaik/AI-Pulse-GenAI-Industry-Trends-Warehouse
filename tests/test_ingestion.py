@@ -43,7 +43,7 @@
 import pytest                    # Testing framework
 import pandas as pd              # For DataFrame assertions
 from unittest.mock import patch, MagicMock  # For mocking API calls
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 # =============================================================================

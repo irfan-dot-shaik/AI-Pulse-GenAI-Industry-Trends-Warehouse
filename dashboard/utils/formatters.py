@@ -14,7 +14,6 @@
 # =============================================================================
 
 from datetime import datetime, timezone
-from typing import Optional
 
 
 def format_number(n: int) -> str:

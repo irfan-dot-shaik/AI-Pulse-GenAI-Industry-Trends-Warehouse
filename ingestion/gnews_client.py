@@ -39,7 +39,6 @@
 
 import requests                  # HTTP library: makes API calls over the internet
 import pandas as pd              # Data manipulation: transforms JSON into DataFrame
-from datetime import datetime    # For timestamp parsing
 from typing import Optional      # Type hint: for Optional[DataFrame] return type
 
 # Import our project's config and logger

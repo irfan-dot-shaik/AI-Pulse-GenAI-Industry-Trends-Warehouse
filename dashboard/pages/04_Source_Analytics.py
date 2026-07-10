@@ -36,7 +36,7 @@ from dashboard.utils.db_helper import get_engine, is_db_connected
 from dashboard.components.styles import inject_styles, render_page_header, render_section_header
 from dashboard.components.sidebar import render_sidebar
 from dashboard.components.footer import render_footer
-from dashboard.utils.formatters import format_number, format_score
+from dashboard.utils.formatters import format_number
 from dashboard.utils.cached_queries import (
     cached_source_breakdown,
     cached_keywords_by_source,
@@ -469,7 +469,7 @@ if not source_df.empty:
 
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "Source":    st.column_config.TextColumn("Source", width="medium"),
             "Articles":  st.column_config.TextColumn("Articles", width="small"),

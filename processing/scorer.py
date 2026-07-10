@@ -58,7 +58,6 @@
 
 import pandas as pd                      # DataFrame manipulation
 from datetime import datetime, timezone  # For recency calculation
-from typing import Optional              # For nullable type hints
 from utils.logger import get_logger      # Our centralized logger
 
 logger = get_logger(__name__)

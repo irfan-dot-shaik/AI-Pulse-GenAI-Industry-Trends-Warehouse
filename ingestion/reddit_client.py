@@ -41,7 +41,6 @@
 # =============================================================================
 
 import pandas as pd
-from datetime import timezone
 from typing import Optional
 
 # PRAW (Python Reddit API Wrapper) — required for Reddit ingestion.

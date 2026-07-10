@@ -53,7 +53,6 @@ st.set_page_config(
 
 # ── Project imports ───────────────────────────────────────────────────────────
 from dashboard.utils.db_helper import get_engine, is_db_connected
-from dashboard.components.styles import inject_styles, render_page_header, render_section_header
 from dashboard.components.sidebar import render_sidebar
 from dashboard.components.article_card import render_article_card
 from dashboard.components.footer import render_footer
@@ -61,6 +60,7 @@ from dashboard.utils.error_boundary import error_boundary
 from analytics.queries import search_articles
 from dashboard.utils.cached_queries import cached_all_sources
 from dashboard.utils.formatters import format_number
+from dashboard.components.styles import inject_styles, render_page_header
 
 # ── Design System ─────────────────────────────────────────────────────────────
 inject_styles()

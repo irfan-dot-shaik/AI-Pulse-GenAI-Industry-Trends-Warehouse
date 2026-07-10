@@ -63,7 +63,7 @@ def get_engine() -> Engine:
     try:
         engine = create_db_engine()
         return engine
-    except Exception as e:
+    except Exception:
         # Return None — dashboard pages check for None and show an error state
         return None
 
