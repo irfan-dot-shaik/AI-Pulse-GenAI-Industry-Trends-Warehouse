@@ -54,3 +54,14 @@ streamlit==1.57.0
 # plotly: Creates interactive charts (hover, zoom, click)
 # plotly.express: High-level chart API (recommended for dashboards)
 plotly==6.5.0
+
+
+# =============================================================================
+# Week 3 — Multi-Source Ingestion Dependencies
+# =============================================================================
+
+# --- Reddit API Client ---
+# praw: Python Reddit API Wrapper — simplifies Reddit authentication and API calls
+# Only needed when REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET are set in .env
+# Hacker News uses only 'requests' (already installed above)
+praw==7.7.1

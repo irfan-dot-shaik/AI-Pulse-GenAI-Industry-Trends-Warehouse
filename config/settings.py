@@ -185,3 +185,59 @@ PROCESSING_MAX_DESC_LENGTH: int = 1000
 # Minimum title length (chars) — shorter titles fail validation
 PROCESSING_MIN_TITLE_LENGTH: int = 10
 
+
+# =============================================================================
+# Week 3 — Multi-Source Ingestion Configuration
+# =============================================================================
+# These constants are NEW in Week 3.
+# All Week 1 and 2 settings above are completely untouched.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Reddit API (via PRAW — Python Reddit API Wrapper)
+# -----------------------------------------------------------------------------
+# How to get credentials (free):
+#   1. Go to https://www.reddit.com/prefs/apps
+#   2. Click "Create App" → type: "script"
+#   3. Copy the client_id (under the app name) and client_secret
+#   4. Use any user-agent string describing your bot
+#
+# These are OPTIONAL. If not set, Reddit ingestion is silently skipped.
+# GNews and Hacker News will still run.
+# -----------------------------------------------------------------------------
+
+REDDIT_CLIENT_ID: str = os.getenv("REDDIT_CLIENT_ID", "")
+REDDIT_CLIENT_SECRET: str = os.getenv("REDDIT_CLIENT_SECRET", "")
+REDDIT_USER_AGENT: str = os.getenv("REDDIT_USER_AGENT", "ai_pulse_bot/1.0 by AI_Pulse_Project")
+
+# Subreddits to scrape — comma-separated string in .env, split here
+_reddit_subs_raw: str = os.getenv(
+    "REDDIT_SUBREDDITS",
+    "MachineLearning,artificial,singularity"
+)
+REDDIT_SUBREDDITS: list[str] = [s.strip() for s in _reddit_subs_raw.split(",") if s.strip()]
+
+# Number of hot/new posts to fetch per subreddit
+REDDIT_POST_LIMIT: int = int(os.getenv("REDDIT_POST_LIMIT", "10"))
+
+# -----------------------------------------------------------------------------
+# Hacker News API (Firebase REST — no authentication required)
+# -----------------------------------------------------------------------------
+# The HN Firebase API is completely free, public, and unlimited.
+# Docs: https://github.com/HackerNews/API
+#
+# We query three feeds and merge unique IDs to maximise coverage:
+#   topstories  → what HN users are upvoting most right now
+#   beststories → the all-time best-rated stories (higher quality signal)
+#   newstories  → the very latest submissions (freshness signal)
+# -----------------------------------------------------------------------------
+
+HN_BASE_URL: str = "https://hacker-news.firebaseio.com/v0"
+
+# Number of top stories to inspect for AI relevance (from the merged ID pool)
+# We fetch 3 lists (top/best/new) and inspect the first HN_INSPECT_LIMIT unique IDs.
+# A higher limit = more AI articles found, but more HTTP calls.
+HN_INSPECT_LIMIT: int = int(os.getenv("HN_INSPECT_LIMIT", "100"))
+
+# Final number of AI-relevant HN articles to return per run
+HN_FETCH_LIMIT: int = int(os.getenv("HN_FETCH_LIMIT", "10"))

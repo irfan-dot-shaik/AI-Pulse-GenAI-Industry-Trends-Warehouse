@@ -54,6 +54,11 @@ from config.settings import (
 )
 from utils.logger import get_logger
 
+# Week 3: shared datetime parser (moved to ingestion/_utils.py)
+# The alias below keeps all existing tests passing without modification.
+from ingestion._utils import parse_datetime as _parse_datetime
+
+
 # Create a logger specifically for this module
 # __name__ here equals "ingestion.gnews_client"
 logger = get_logger(__name__)
@@ -309,35 +314,3 @@ def fetch_ai_news() -> Optional[pd.DataFrame]:
 
     return df
 
-
-def _parse_datetime(dt_string: Optional[str]) -> Optional[datetime]:
-    """
-    Parse an ISO 8601 datetime string from the GNews API into a Python datetime.
-
-    Args:
-        dt_string (str): ISO 8601 string, e.g. "2026-06-24T10:00:00Z"
-
-    Returns:
-        datetime: A timezone-aware datetime object, or None if parsing fails.
-
-    CONCEPT — The underscore prefix (_parse_datetime):
-        Functions prefixed with _ are "private helpers" — they are meant to be
-        used only WITHIN this module. Other modules should not call this function.
-        This is a Python naming convention, not enforced by the language.
-
-    CONCEPT — ISO 8601:
-        ISO 8601 is an international standard for date/time strings.
-        The "Z" at the end means UTC timezone (same as +00:00).
-        Example: "2026-06-24T10:30:00Z" = June 24, 2026, 10:30 AM UTC
-    """
-    if not dt_string:
-        return None
-
-    try:
-        # Python 3.11+ fromisoformat() handles the "Z" suffix natively.
-        # Older versions required replacing "Z" with "+00:00".
-        # Since we're on Python 3.11, we can use fromisoformat directly.
-        return datetime.fromisoformat(dt_string.replace("Z", "+00:00"))
-    except (ValueError, AttributeError) as e:
-        logger.warning(f"Could not parse datetime string '{dt_string}': {e}")
-        return None
