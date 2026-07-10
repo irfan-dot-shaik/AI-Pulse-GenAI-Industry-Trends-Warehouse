@@ -857,3 +857,143 @@ def get_data_quality_stats(engine: Engine) -> dict:
         logger.error(f"Error computing data quality stats: {e}")
 
     return result
+
+
+# =============================================================================
+# Week 3 — Multi-Source Analytics
+# =============================================================================
+
+def get_articles_per_source_breakdown(engine: Engine) -> pd.DataFrame:
+    """
+    Return article counts, average intelligence score, and max score,
+    grouped by ingestion source (GNews, Hacker News, Reddit/*).
+
+    Used by the Source Analytics dashboard page (05_Source_Analytics.py)
+    for the multi-source comparison section.
+
+    Args:
+        engine: SQLAlchemy engine connected to the warehouse.
+
+    Returns:
+        pd.DataFrame with columns:
+            source        (str)   — source name, e.g. "GNews", "Hacker News"
+            article_count (int)   — total articles from this source in staging
+            avg_score     (float) — mean intelligence score
+            max_score     (int)   — highest intelligence score
+            pct_of_total  (float) — percentage share of all articles (0–100)
+
+        Returns empty DataFrame if table is empty or an error occurs.
+    """
+    sql = f"""
+        SELECT
+            source,
+            COUNT(*)                           AS article_count,
+            ROUND(AVG(intelligence_score), 1)  AS avg_score,
+            MAX(intelligence_score)            AS max_score
+        FROM {_STAGING_TABLE}
+        WHERE source IS NOT NULL
+          AND source != ''
+        GROUP BY source
+        ORDER BY article_count DESC, avg_score DESC
+    """
+    df = _safe_query(engine, sql)
+
+    if df.empty:
+        return df
+
+    # Compute percentage contribution column
+    total = df["article_count"].sum()
+    if total > 0:
+        df["pct_of_total"] = (df["article_count"] / total * 100).round(1)
+    else:
+        df["pct_of_total"] = 0.0
+
+    return df
+
+
+def get_top_keywords_by_source(engine: Engine, top_n: int = 8) -> pd.DataFrame:
+    """
+    Return the most frequent AI keywords found per source.
+
+    Parses the comma-separated `keywords_found` column from stg_ai_news
+    and groups keyword frequency by source.
+
+    Args:
+        engine: SQLAlchemy engine.
+        top_n:  Number of top keywords to return per source (default: 8).
+
+    Returns:
+        pd.DataFrame with columns:
+            source   (str) — source name
+            keyword  (str) — keyword text
+            count    (int) — number of articles from this source mentioning this keyword
+
+        Returns empty DataFrame if no keyword data or on error.
+
+    CONCEPT — PostgreSQL string_to_array + UNNEST:
+        The keywords_found column stores comma-separated keywords like:
+        "gpt,openai,llm"
+        PostgreSQL can split this into rows with:
+            UNNEST(string_to_array(keywords_found, ','))
+        This gives us one row per keyword per article, which we then GROUP BY.
+    """
+    sql = f"""
+        SELECT
+            source,
+            TRIM(LOWER(kw)) AS keyword,
+            COUNT(*)        AS count
+        FROM {_STAGING_TABLE},
+             UNNEST(string_to_array(keywords_found, ',')) AS kw
+        WHERE keywords_found IS NOT NULL
+          AND keywords_found != ''
+          AND source IS NOT NULL
+          AND source != ''
+        GROUP BY source, TRIM(LOWER(kw))
+        ORDER BY source, count DESC
+    """
+    df = _safe_query(engine, sql)
+
+    if df.empty:
+        return df
+
+    # Keep only top_n keywords per source
+    df = (
+        df.groupby("source", group_keys=False)
+        .apply(lambda g: g.nlargest(top_n, "count"))
+        .reset_index(drop=True)
+    )
+
+    return df
+
+
+def get_articles_per_day_by_source(engine: Engine) -> pd.DataFrame:
+    """
+    Return daily article publication counts grouped by source.
+
+    Enables trend-line charts split by source on the Source Analytics page.
+
+    Args:
+        engine: SQLAlchemy engine.
+
+    Returns:
+        pd.DataFrame with columns:
+            published_date (date)  — publication date
+            source         (str)   — source name
+            article_count  (int)   — articles published on that date from that source
+
+        Ordered by date ascending, then source alphabetically.
+        Returns empty DataFrame if table is empty or on error.
+    """
+    sql = f"""
+        SELECT
+            DATE(published_at AT TIME ZONE 'UTC')  AS published_date,
+            source,
+            COUNT(*)                               AS article_count
+        FROM {_STAGING_TABLE}
+        WHERE published_at IS NOT NULL
+          AND source IS NOT NULL
+          AND source != ''
+        GROUP BY DATE(published_at AT TIME ZONE 'UTC'), source
+        ORDER BY published_date ASC, source ASC
+    """
+    return _safe_query(engine, sql)

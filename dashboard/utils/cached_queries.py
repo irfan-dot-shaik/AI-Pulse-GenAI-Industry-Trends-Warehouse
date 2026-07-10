@@ -103,3 +103,37 @@ def cached_articles_per_day(_engine: Engine, days: int = 30) -> pd.DataFrame:
 def cached_top_scored_articles(_engine: Engine, limit: int = 10) -> pd.DataFrame:
     from analytics.queries import get_top_scored_articles
     return get_top_scored_articles(_engine, limit=limit)
+
+
+# =============================================================================
+# Week 3 — Multi-Source Cached Queries
+# =============================================================================
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_source_breakdown(_engine: Engine) -> pd.DataFrame:
+    """
+    Cached wrapper for get_articles_per_source_breakdown().
+    Returns article count, avg/max score, and % share per source.
+    """
+    from analytics.queries import get_articles_per_source_breakdown
+    return get_articles_per_source_breakdown(_engine)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_keywords_by_source(_engine: Engine, top_n: int = 8) -> pd.DataFrame:
+    """
+    Cached wrapper for get_top_keywords_by_source().
+    Returns top AI keywords grouped by ingestion source.
+    """
+    from analytics.queries import get_top_keywords_by_source
+    return get_top_keywords_by_source(_engine, top_n=top_n)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_daily_trend_by_source(_engine: Engine) -> pd.DataFrame:
+    """
+    Cached wrapper for get_articles_per_day_by_source().
+    Returns daily article counts split by source for trend charts.
+    """
+    from analytics.queries import get_articles_per_day_by_source
+    return get_articles_per_day_by_source(_engine)
