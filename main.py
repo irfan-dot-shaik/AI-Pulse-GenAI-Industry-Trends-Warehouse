@@ -49,11 +49,19 @@
 
 import sys                      # For sys.exit() — cleanly exits with an error code
 from datetime import datetime, timezone  # For timing the pipeline run
+import pandas as pd             # For pd.concat (multi-source merge)
 
 # --- Project modules ---
 # We import from our own modules using the package.module.function pattern
-from config.settings import validate_config
+from config.settings import (
+    validate_config,
+    REDDIT_CLIENT_ID,
+    REDDIT_CLIENT_SECRET,
+    HN_FETCH_LIMIT,
+)
 from ingestion.gnews_client import fetch_ai_news
+from ingestion.hn_client import fetch_hn_news           # Week 3: Hacker News
+from ingestion.reddit_client import fetch_reddit_news   # Week 3: Reddit (optional)
 from database.warehouse import (
     create_db_engine,
     initialize_database,
@@ -75,10 +83,9 @@ logger = get_logger(__name__)
 BANNER = """
 ==============================================================
    AI PULSE -- GenAI Industry Trends Warehouse
-   Data Pipeline -- Week 1 + 2
-   GNews API -> Validate -> Score -> PostgreSQL
-==============================================================
-"""
+   Data Pipeline -- Week 1 + 2 + 3
+   GNews + HackerNews + Reddit -> Validate -> Score -> PostgreSQL
+=============================================================="""
 
 
 # =============================================================================
@@ -87,13 +94,13 @@ BANNER = """
 
 def run_pipeline() -> None:
     """
-    Execute the complete data pipeline end-to-end (Week 1 + Week 2).
+    Execute the complete data pipeline end-to-end (Week 1 + Week 2 + Week 3).
 
     Pipeline Steps:
         1. Validate configuration
         2. Establish database connection
         3. Initialize database schema (raw + staging tables)
-        4. Fetch news from GNews API
+        4. Fetch news from ALL sources (GNews + HackerNews + Reddit)
         5. Load raw articles into raw_ai_news (Week 1)
         6. Validate, transform, score -> load to stg_ai_news (Week 2)
         7. Report summary
@@ -171,30 +178,85 @@ def run_pipeline() -> None:
         sys.exit(1)
 
     # =========================================================================
-    # STEP 4: Fetch Data from GNews API
+    # STEP 4: Fetch Data from ALL Sources (Week 3 — Multi-Source)
+    # =========================================================================
+    # CONCEPT — Multi-Source Merge:
+    #   Each source client returns an Optional[pd.DataFrame] with the same
+    #   7-column schema. We collect all non-None DataFrames and merge them
+    #   with pd.concat(). The merged DataFrame then flows through the
+    #   UNCHANGED Steps 5 and 6 (validation, transform, score, load).
+    #
+    #   Sources:
+    #     GNews     — always runs (requires GNEWS_API_KEY)
+    #     HackerNews — always runs (no auth needed)
+    #     Reddit    — runs only if REDDIT_CLIENT_ID + SECRET are in .env
     # =========================================================================
     logger.info("-" * 60)
-    logger.info("STEP 4/6 -- Fetching AI news from GNews API")
+    logger.info("STEP 4/6 -- Multi-source fetch (GNews + HackerNews + Reddit)")
     logger.info("-" * 60)
 
-    df = fetch_ai_news()
+    all_frames: list[pd.DataFrame] = []
+    source_counts: dict[str, int] = {}
 
-    if df is None:
-        logger.error("Data fetch returned None. No data to load.")
-        logger.error("Possible causes:")
-        logger.error("  1. GNEWS_API_KEY is invalid or expired")
-        logger.error("  2. No articles matched the search query")
-        logger.error("  3. Network/connectivity issue")
-        logger.warning("Pipeline completing with 0 records loaded.")
+    # --- Source 1: GNews (always run) ---
+    logger.info("[Source 1/3] GNews API...")
+    gnews_df = fetch_ai_news()
+    if gnews_df is not None:
+        all_frames.append(gnews_df)
+        source_counts["GNews"] = len(gnews_df)
+        logger.info(f"[GNews] {len(gnews_df)} articles collected")
+    else:
+        logger.warning("[GNews] Returned no data. Check GNEWS_API_KEY and network.")
+        source_counts["GNews"] = 0
+
+    # --- Source 2: Hacker News (always run, no auth) ---
+    logger.info("[Source 2/3] Hacker News (top/best/new feeds)...")
+    hn_df = fetch_hn_news(limit=HN_FETCH_LIMIT)
+    if hn_df is not None:
+        all_frames.append(hn_df)
+        source_counts["Hacker News"] = len(hn_df)
+        logger.info(f"[HN] {len(hn_df)} articles collected")
+    else:
+        logger.warning("[HN] No AI-relevant articles found.")
+        source_counts["Hacker News"] = 0
+
+    # --- Source 3: Reddit (optional — skips gracefully if credentials absent) ---
+    logger.info("[Source 3/3] Reddit (PRAW)...")
+    if REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET:
+        reddit_df = fetch_reddit_news()
+        if reddit_df is not None:
+            all_frames.append(reddit_df)
+            source_counts["Reddit"] = len(reddit_df)
+            logger.info(f"[Reddit] {len(reddit_df)} articles collected")
+        else:
+            logger.warning("[Reddit] No external articles found.")
+            source_counts["Reddit"] = 0
+    else:
+        logger.info(
+            "[Reddit] Skipped — REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET not set in .env. "
+            "Add them to enable Reddit ingestion."
+        )
+        source_counts["Reddit"] = 0
+
+    # --- Log source breakdown ---
+    logger.info("[Multi-source summary]:")
+    for src, cnt in source_counts.items():
+        logger.info(f"  {src}: {cnt} articles")
+
+    # --- Abort if ALL sources returned nothing ---
+    if not all_frames:
+        logger.error("All sources returned no data. Pipeline completing with 0 records.")
         _report_summary(pipeline_start, fetched=0, inserted=0, staging_inserted=0, engine=engine)
-        return  # Exit gracefully (not sys.exit — this is not a fatal error)
+        return
 
-    logger.info(f"[OK] Fetched {len(df)} articles from GNews API")
+    # --- Merge all source DataFrames into one ---
+    df = pd.concat(all_frames, ignore_index=True)
+    logger.info(f"[OK] Total articles merged: {len(df)} from {len(all_frames)} source(s)")
 
-    # Log a sample of what we fetched (first 3 titles)
+    # Log a sample of what we fetched (first 3 titles across all sources)
     logger.info("Sample articles fetched:")
     for i, row in df.head(3).iterrows():
-        logger.info(f"  [{i+1}] {row['title'][:70]}...")
+        logger.info(f"  [{i+1}] [{row.get('source', '?')}] {row['title'][:65]}...")
 
     # =========================================================================
     # STEP 5: Load Data into PostgreSQL
