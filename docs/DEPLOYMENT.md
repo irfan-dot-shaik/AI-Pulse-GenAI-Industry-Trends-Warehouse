@@ -27,8 +27,8 @@ The pipeline requires a running PostgreSQL instance to store the data warehouse 
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ai-pulse-warehouse.git
-   cd ai-pulse-warehouse
+   git clone https://github.com/irfan-dot-shaik/AI-Pulse-GenAI-Industry-Trends-Warehouse.git
+   cd AI-Pulse-GenAI-Industry-Trends-Warehouse
    ```
 
 2. **Create a Python virtual environment:**

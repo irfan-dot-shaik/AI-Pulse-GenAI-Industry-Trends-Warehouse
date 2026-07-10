@@ -83,7 +83,7 @@ logger = get_logger(__name__)
 BANNER = """
 ==============================================================
    AI PULSE -- GenAI Industry Trends Warehouse
-   Data Pipeline -- Week 1 + 2 + 3
+   Data Pipeline -- Week 3
    GNews + HackerNews + Reddit -> Validate -> Score -> PostgreSQL
 =============================================================="""
 
@@ -94,7 +94,7 @@ BANNER = """
 
 def run_pipeline() -> None:
     """
-    Execute the complete data pipeline end-to-end (Week 1 + Week 2 + Week 3).
+    Execute the complete data pipeline end-to-end (Week 3).
 
     Pipeline Steps:
         1. Validate configuration
@@ -352,7 +352,7 @@ def _report_summary(
 
     summary = f"""
 ==============================================================
-              PIPELINE RUN SUMMARY (Week 1 + 2)
+              PIPELINE RUN SUMMARY (Week 3)
 ==============================================================
   Status:              SUCCESS
   Run Duration:        {f"{duration_seconds:.2f}s"}

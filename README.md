@@ -129,8 +129,8 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full setup instructions.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/YOUR_USERNAME/ai-pulse-warehouse.git
-cd ai-pulse-warehouse
+git clone https://github.com/irfan-dot-shaik/AI-Pulse-GenAI-Industry-Trends-Warehouse.git
+cd AI-Pulse-GenAI-Industry-Trends-Warehouse
 
 # 2. Setup Virtual Environment
 python -m venv venv
