@@ -75,10 +75,10 @@ PLOTLY_LAYOUT = dict(
     font=dict(family="Inter, sans-serif", color=_TEXT, size=12),
     margin=dict(l=0, r=0, t=30, b=0),
     showlegend=True,
-    legend=dict(
-        bgcolor="rgba(0,0,0,0)",
-        font=dict(color=_TEXT, size=11),
-    ),
+    # NOTE: 'legend' is intentionally NOT included here.
+    # Each chart that needs a specific legend layout passes its own legend=dict(...)
+    # directly to update_layout(). Keeping it here caused TypeError: 'got multiple
+    # values for keyword argument legend' when **PLOTLY_LAYOUT was unpacked.
 )
 
 
@@ -383,6 +383,10 @@ if daily_source_df is not None and not daily_source_df.empty:
     fig_trend.update_layout(
         **PLOTLY_LAYOUT,
         height=340,
+        legend=dict(
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(color=_TEXT, size=11),
+        ),
         xaxis=dict(
             gridcolor="rgba(200,169,106,0.06)",
             color=_MUTED,

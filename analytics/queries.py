@@ -956,10 +956,15 @@ def get_top_keywords_by_source(engine: Engine, top_n: int = 8) -> pd.DataFrame:
     if df.empty:
         return df
 
-    # Keep only top_n keywords per source
+    # Keep only top_n keywords per source.
+    # APPROACH: sort descending by count, then take the first top_n rows per source
+    # using groupby.head(). This avoids groupby.apply entirely, which triggers a
+    # FutureWarning in pandas 2.2+ ("DataFrameGroupBy.apply operated on the
+    # grouping columns"). groupby.head() has no such deprecation.
     df = (
-        df.groupby("source", group_keys=False)
-        .apply(lambda g: g.nlargest(top_n, "count"))
+        df.sort_values("count", ascending=False)
+        .groupby("source", sort=False)
+        .head(top_n)
         .reset_index(drop=True)
     )
 
