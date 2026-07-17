@@ -1,0 +1,25 @@
+# Virtual environments
+venv/
+env/
+.env
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+
+# Database and logs
+logs/
+*.log
+
+# Project specific
+docs/
+scratch/
+.streamlit/

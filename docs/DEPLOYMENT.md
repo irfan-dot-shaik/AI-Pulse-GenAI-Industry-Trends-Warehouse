@@ -23,9 +23,36 @@ The pipeline requires a running PostgreSQL instance to store the data warehouse 
 
 ---
 
-## 2. Project Setup
+## 🚀 Recommended: Deployment via Docker Compose
 
-1. **Clone the repository:**
+The easiest and most robust way to deploy the AI Pulse pipeline is using Docker. This avoids local environment issues and automates PostgreSQL setup.
+
+1. **Install Docker** and **Docker Compose** on your machine.
+2. Clone the repository and configure `.env` with your API keys (the `DATABASE_URL` is already handled by Docker).
+3. Run the following command in the project root:
+   ```bash
+   docker compose up --build -d
+   ```
+4. Docker will spin up the `postgres` database and the `ai-pulse-app` container. The pipeline (`main.py`) will run automatically on startup, followed by the Streamlit server.
+5. Access the dashboard at [http://localhost:8501](http://localhost:8501).
+
+---
+
+## Alternative: Manual Local Setup
+
+If you prefer to run the project without Docker, follow these steps:
+
+### 1. PostgreSQL Setup
+
+The pipeline requires a running PostgreSQL instance to store the data warehouse tables.
+
+1. Download and install PostgreSQL from [postgresql.org](https://www.postgresql.org/download/).
+2. During installation, set a password for the default `postgres` user.
+3. Open `psql` (the command-line tool) or pgAdmin.
+4. Create the project database:
+   ```sql
+   CREATE DATABASE ai_pulse_db;
+   ```
    ```bash
    git clone https://github.com/irfan-dot-shaik/AI-Pulse-GenAI-Industry-Trends-Warehouse.git
    cd AI-Pulse-GenAI-Industry-Trends-Warehouse

@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai_pulse_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ai_pulse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ai_pulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ai-pulse-app:
+    build: .
+    container_name: ai_pulse_app
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql://admin:password123@postgres:5432/ai_pulse
+      - GNEWS_API_KEY=${GNEWS_API_KEY}
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "python main.py && streamlit run dashboard/app.py --server.port=8501 --server.address=0.0.0.0"
+
+volumes:
+  postgres_data:
