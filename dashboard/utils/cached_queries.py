@@ -106,7 +106,7 @@ def cached_top_scored_articles(_engine: Engine, limit: int = 10) -> pd.DataFrame
 
 
 # =============================================================================
-# Week 3 — Multi-Source Cached Queries
+# Multi-Source Cached Queries
 # =============================================================================
 
 @st.cache_data(ttl=300, show_spinner=False)

@@ -39,7 +39,7 @@ def render_footer() -> None:
                     <span style="color:#A9B1A6;">Stack</span>
                     &nbsp;Python · PostgreSQL · Streamlit · Plotly<br>
                     <span style="color:#A9B1A6;">Version</span>
-                    &nbsp;3.0 · Week 3
+                    &nbsp;v1.0 · Production Release
                 </div>
             </div>
             <div style="margin-top:1rem; padding-top:0.8rem;

@@ -1,7 +1,7 @@
 # =============================================================================
-# dashboard/pages/05_Source_Analytics.py — AI Pulse Dashboard
+# dashboard/pages/04_Source_Analytics.py — AI Pulse Dashboard
 # =============================================================================
-# MODULE 8: Source Analytics — Week 3 Multi-Source Intelligence
+# MODULE 8: Source Analytics — Multi-Source Intelligence
 #
 # This page provides a dedicated view of data quality and intelligence
 # across all ingestion sources: GNews, Hacker News, and Reddit.

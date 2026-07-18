@@ -36,7 +36,7 @@ st.set_page_config(
         "About": (
             "**AI Pulse** — GenAI Industry Trends Warehouse\n\n"
             "Built by Shaik Irfan · B.Tech CSE-AIDE\n"
-            "Foundations of Data Engineering · Week 3"
+            "Production Ready Analytics Platform"
         ),
     },
 )

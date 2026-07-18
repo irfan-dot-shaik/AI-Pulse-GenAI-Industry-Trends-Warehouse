@@ -37,7 +37,7 @@ if _PROJECT_ROOT not in sys.path:
 
 import streamlit as st                        # For @st.cache_resource
 from sqlalchemy.engine import Engine          # Type hint
-from database.warehouse import create_db_engine  # Our Week 1 engine factory
+from database.warehouse import create_db_engine  # Shared SQLAlchemy engine factory
 
 
 @st.cache_resource(show_spinner="Connecting to database...")

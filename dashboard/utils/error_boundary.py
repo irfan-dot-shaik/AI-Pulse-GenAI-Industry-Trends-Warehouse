@@ -28,7 +28,7 @@ def error_boundary(fallback_msg: str = "An unexpected error occurred while loadi
                         border-left:4px solid #B35C4A;">
                 <div style="font-family:'Cormorant Garamond',serif; font-size:1.3rem;
                             font-weight:600; color:#F7F5F2; margin-bottom:0.4rem;">
-                    Application Error
+                    Unable to Load Section
                 </div>
                 <div style="font-family:'Inter',sans-serif; font-size:0.86rem;
                             color:#A9B1A6; line-height:1.6;">
@@ -36,10 +36,9 @@ def error_boundary(fallback_msg: str = "An unexpected error occurred while loadi
                 </div>
                 <div style="font-family:'Inter',sans-serif; font-size:0.75rem;
                             color:#6B7566; margin-top:0.8rem; font-style:italic;">
-                    Please check the logs for more details.
+                    Please check that PostgreSQL is running and the pipeline has been executed.
                 </div>
             </div>
             """,
             unsafe_allow_html=True
         )
-        st.stop()

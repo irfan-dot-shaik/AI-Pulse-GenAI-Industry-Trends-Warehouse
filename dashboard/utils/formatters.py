@@ -55,51 +55,6 @@ def format_score(score: float) -> str:
     return f"{int(score)} / 100"
 
 
-def format_score_badge(score: int) -> str:
-    """
-    Return a score with emoji badge based on category.
-
-    Examples:
-        95 -> "🔥 95"
-        80 -> "⚡ 80"
-        60 -> "📈 60"
-        30 -> "📰 30"
-
-    Args:
-        score: Integer intelligence score (0-100).
-
-    Returns:
-        str: Emoji + score string.
-    """
-    if score >= 90:
-        return f"🔥 {score}"
-    elif score >= 75:
-        return f"⚡ {score}"
-    elif score >= 50:
-        return f"📈 {score}"
-    else:
-        return f"📰 {score}"
-
-
-def format_category_badge(category: str) -> str:
-    """
-    Return a colored label string for a score category.
-
-    Args:
-        category: One of "Hot Trend", "High Impact", "Trending", "Normal".
-
-    Returns:
-        str: Emoji + category string.
-    """
-    badges = {
-        "Hot Trend":   "🔥 Hot Trend",
-        "High Impact": "⚡ High Impact",
-        "Trending":    "📈 Trending",
-        "Normal":      "📰 Normal",
-    }
-    return badges.get(category, f"📰 {category}")
-
-
 def format_relative_time(dt) -> str:
     """
     Format a datetime as a human-readable relative time string.
@@ -209,44 +164,3 @@ def truncate_text(text: str, max_chars: int = 120) -> str:
     return text[:max_chars - 3] + "..."
 
 
-def get_score_color(score: int) -> str:
-    """
-    Return a hex color string corresponding to an intelligence score.
-
-    Used for coloring score badges in charts and cards.
-
-    Args:
-        score: Integer score 0-100.
-
-    Returns:
-        str: Hex color string.
-    """
-    if score >= 90:
-        return "#EF4444"   # Red (hot/urgent)
-    elif score >= 75:
-        return "#F59E0B"   # Amber (high impact)
-    elif score >= 50:
-        return "#3B82F6"   # Blue (trending)
-    else:
-        return "#6B7280"   # Gray (normal)
-
-
-def get_category_color(category: str) -> str:
-    """
-    Return a hex color for a score category label.
-
-    Consistent with get_score_color() thresholds.
-
-    Args:
-        category: "Hot Trend", "High Impact", "Trending", or "Normal".
-
-    Returns:
-        str: Hex color string.
-    """
-    colors = {
-        "Hot Trend":   "#EF4444",  # Red
-        "High Impact": "#F59E0B",  # Amber
-        "Trending":    "#3B82F6",  # Blue
-        "Normal":      "#6B7280",  # Gray
-    }
-    return colors.get(category, "#6B7280")

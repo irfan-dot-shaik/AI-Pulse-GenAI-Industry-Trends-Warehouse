@@ -93,25 +93,27 @@ st.markdown("---")
 
 # Achievements
 st.markdown("### Internship Journey")
-with st.expander("Week 1: Foundation", expanded=True):
+with st.expander("Phase 1: Foundation", expanded=True):
     st.markdown(
         "- Established the Medallion Architecture.\n"
         "- Created GNews API ingestion client.\n"
         "- Built the PostgreSQL schema."
     )
 
-with st.expander("Week 2: Processing & Analytics", expanded=True):
+with st.expander("Phase 2: Processing & Analytics", expanded=True):
     st.markdown(
         "- Built Pandas-based validation and transformation.\n"
         "- Designed the AI Intelligence Scoring heuristic (0-100).\n"
         "- Launched the Streamlit executive dashboard."
     )
 
-with st.expander("Week 3: Multi-Source Scaling", expanded=True):
+with st.expander("Phase 3: Multi-Source Scaling & Production", expanded=True):
     st.markdown(
         "- Added Hacker News & Reddit ingestion.\n"
         "- Implemented concurrent API fetching via `ThreadPoolExecutor`.\n"
-        "- Added Source Analytics and polished the UI."
+        "- Added Source Analytics, polished the executive dashboard UI.\n"
+        "- Dockerized the full stack with Docker & Docker Compose.\n"
+        "- Achieved 30+ passing automated tests."
     )
 
 st.markdown("---")
@@ -119,9 +121,9 @@ st.markdown("---")
 # Future Scope
 st.markdown("### Future Scope")
 st.markdown(
-    "- Containerizing the stack using Docker & Docker Compose.\n"
     "- Orchestrating the pipeline with Apache Airflow.\n"
-    "- NLP-based sentiment analysis and summarization."
+    "- NLP-based sentiment analysis and summarization.\n"
+    "- Real-time streaming ingestion with Kafka."
 )
 
 st.markdown("---")
@@ -131,7 +133,7 @@ st.markdown("### Developer Information")
 st.info(
     "**Shaik Irfan**\n\n"
     "B.Tech CSE - AI & DE\n\n"
-    "*Foundations of Data Engineering — Week 3*"
+    "*Final Internship Showcase — Production Ready Analytics Platform*"
 )
 
 render_footer()

@@ -1,5 +1,5 @@
 # =============================================================================
-# dashboard/pages/04_Insights.py — AI Pulse Dashboard
+# dashboard/pages/05_Insights.py — AI Pulse Dashboard
 # =============================================================================
 # MODULE 7: Insights & Pipeline Intelligence
 #

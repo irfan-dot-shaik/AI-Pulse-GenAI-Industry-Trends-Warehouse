@@ -109,30 +109,54 @@ with k5:
 # SECTION 5 — Quick Filters  (placed before Section 2 for UX flow)
 # =============================================================================
 render_section_header("Quick Filters")
-qf1, qf2, qf3, qf4, qf5 = st.columns([4, 3, 3, 3, 2], gap="medium")
+
+# ── Apply reset defaults BEFORE any widget is rendered ────────────────────────
+if st.session_state.get("_top_reset", False):
+    st.session_state["top_kw"]   = ""
+    st.session_state["top_src"]  = "All Sources"
+    st.session_state["top_cat"]  = "All"
+    st.session_state["top_sort"] = "Highest Score"
+    st.session_state["_top_reset"] = False
+
+# Render filter labels manually above the widget row so that every widget
+# (including the button) has label_visibility='collapsed' and shares the same height.
+lql1, lql2, lql3, lql4, lql5 = st.columns([4, 3, 3, 3, 3], gap="medium")
+with lql1:
+    st.markdown("<span class='filter-label'>Search</span>", unsafe_allow_html=True)
+with lql2:
+    st.markdown("<span class='filter-label'>Source</span>", unsafe_allow_html=True)
+with lql3:
+    st.markdown("<span class='filter-label'>Category</span>", unsafe_allow_html=True)
+with lql4:
+    st.markdown("<span class='filter-label'>Sort By</span>", unsafe_allow_html=True)
+with lql5:
+    st.markdown("<span class='filter-label'>&#8203;</span>", unsafe_allow_html=True)
+
+
+
+qf1, qf2, qf3, qf4, qf5 = st.columns([4, 3, 3, 3, 3], gap="medium")
 
 with qf1:
-    kw = st.text_input("Search", placeholder="OpenAI, Claude, Gemini…",
-                       key="top_kw")
+    kw = st.text_input("Search", placeholder="OpenAI, Claude, Gemini\u2026",
+                       label_visibility="collapsed", key="top_kw")
 with qf2:
     if "top_sources" not in st.session_state:
         st.session_state["top_sources"] = cached_all_sources(engine)
     src = st.selectbox("Source",
                        ["All Sources"] + st.session_state["top_sources"],
-                       key="top_src")
+                       label_visibility="collapsed", key="top_src")
 with qf3:
     cat = st.selectbox("Category",
                        ["All", "Hot Trend", "High Impact", "Trending", "Normal"],
-                       key="top_cat")
+                       label_visibility="collapsed", key="top_cat")
 with qf4:
     sort_ui = st.selectbox("Sort By",
                            ["Highest Score", "Newest First"],
-                           key="top_sort")
+                           label_visibility="collapsed", key="top_sort")
 with qf5:
-    st.html("<div style='height:1.68rem;'></div>")
     if st.button("Reset", key="top_reset", use_container_width=True):
-        for k in ["top_kw","top_src","top_cat","top_sort"]:
-            st.session_state.pop(k, None)
+        # Set flag only — never modify widget keys after they are rendered
+        st.session_state["_top_reset"] = True
         st.rerun()
 
 

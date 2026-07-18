@@ -472,6 +472,7 @@ div[data-baseweb="select"] > div {
     letter-spacing: 0.04em !important;
     padding: 0.5rem 1.2rem !important;
     transition: all var(--dur) var(--ease) !important;
+    white-space: nowrap !important;
 }
 
 .stButton > button:hover {
@@ -639,6 +640,26 @@ div[data-testid="stSlider"] [data-baseweb="slider"] [data-testid="stTickBar"] {
     font-size: 0.72rem !important;
 }
 
+/* ── Filter row alignment ──────────────────────────────────────────────────── */
+div[data-testid="stHorizontalBlock"] div[data-testid="stButton"] {
+    margin-top: -5px !important;
+}
+
+/* ── Filter label (used in News Explorer + Top AI News filter rows) ─────────── */
+.filter-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    font-family: var(--font-body);
+    line-height: 1.6;
+}
+
+/* ── Slider thumb focus ────────────────────────────────────────────────────── */
+[data-baseweb="slider"] [role="slider"]:focus {
+    outline: 2px solid rgba(200,169,106,0.5) !important;
+    outline-offset: 2px;
+}
 </style>
 """
 
@@ -651,7 +672,7 @@ def inject_styles() -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
-def render_page_header(title: str, subtitle: str, icon: str = "") -> None:
+def render_page_header(title: str, subtitle: str = "") -> None:
     """
     Render an elegant serif page header with muted subtitle.
     Uses Cormorant Garamond for the premium editorial feel.
@@ -676,7 +697,7 @@ def render_page_header(title: str, subtitle: str, icon: str = "") -> None:
 
 def render_section_header(label: str) -> None:
     """
-    Render a minimal uppercase section divider — no emojis, pure typographic hierarchy.
+    Render a minimal uppercase section divider.
     """
     st.markdown(
         f"""

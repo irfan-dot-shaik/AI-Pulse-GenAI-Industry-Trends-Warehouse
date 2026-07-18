@@ -101,18 +101,46 @@ render_page_header(
 )
 
 # =============================================================================
-# =============================================================================
+# FILTER SECTION
 # All filters live above the results.
-# Using st.columns() for horizontal layout avoids sidebar clutter.
+# Reset flag pattern: apply defaults BEFORE widgets are created so Streamlit
+# never sees a key modification after widget instantiation.
 # =============================================================================
 
-fc1, fc2, fc3, fc4, fc5 = st.columns([4, 3, 3, 3, 2], gap="medium")
+# ── Apply reset defaults BEFORE any widget is rendered ────────────────────────
+if st.session_state.get("_explorer_reset", False):
+    st.session_state["explorer_keyword"]     = ""
+    st.session_state["explorer_source"]      = "All Sources"
+    st.session_state["explorer_category"]    = "All Categories"
+    st.session_state["explorer_sort"]        = "Newest First"
+    st.session_state["explorer_score_range"] = (0, 100)
+    st.session_state["explorer_page"]        = 1
+    st.session_state["_explorer_reset"]      = False
+
+# Render filter labels manually (one row), then widgets in a second row.
+# Collapsing all native labels ensures every widget in the column row has
+# identical height with no label offset.
+lbl1, lbl2, lbl3, lbl4, lbl5 = st.columns([4, 3, 3, 3, 3], gap="medium")
+with lbl1:
+    st.markdown("<span class='filter-label'>Search</span>", unsafe_allow_html=True)
+with lbl2:
+    st.markdown("<span class='filter-label'>Source</span>", unsafe_allow_html=True)
+with lbl3:
+    st.markdown("<span class='filter-label'>Score Category</span>", unsafe_allow_html=True)
+with lbl4:
+    st.markdown("<span class='filter-label'>Sort By</span>", unsafe_allow_html=True)
+with lbl5:
+    st.markdown("<span class='filter-label'>&#8203;</span>", unsafe_allow_html=True)
+
+
+
+fc1, fc2, fc3, fc4, fc5 = st.columns([4, 3, 3, 3, 3], gap="medium")
 
 with fc1:
     keyword = st.text_input(
         "Search",
-        placeholder="OpenAI, GPT-4, Gemini…",
-        label_visibility="visible",
+        placeholder="OpenAI, GPT-4, Gemini\u2026",
+        label_visibility="collapsed",
         key="explorer_keyword",
     )
 
@@ -127,6 +155,7 @@ with fc2:
     source_choice = st.selectbox(
         "Source",
         options=sources_list,
+        label_visibility="collapsed",
         key="explorer_source",
     )
 
@@ -134,6 +163,7 @@ with fc3:
     category_choice = st.selectbox(
         "Score Category",
         options=["All Categories", "Hot Trend", "High Impact", "Trending", "Normal"],
+        label_visibility="collapsed",
         key="explorer_category",
     )
 
@@ -141,12 +171,15 @@ with fc4:
     sort_choice = st.selectbox(
         "Sort By",
         options=["Newest First", "Oldest First", "Highest Score"],
+        label_visibility="collapsed",
         key="explorer_sort",
     )
 
 with fc5:
-    st.html("<div style='height:1.68rem;'></div>")
-    reset = st.button("Reset", key="explorer_reset", use_container_width=True)
+    if st.button("Reset", key="explorer_reset", use_container_width=True):
+        # Set flag only — never modify widget keys after they are rendered
+        st.session_state["_explorer_reset"] = True
+        st.rerun()
 
 # Score filter — full-width slider below the row
 score_min, score_max = st.slider(
@@ -156,15 +189,6 @@ score_min, score_max = st.slider(
     key="explorer_score_range",
     help="Filter articles by their AI Intelligence Score (0 = weakest, 100 = strongest).",
 )
-
-
-# ── Handle Reset ──────────────────────────────────────────────────────────────
-if reset:
-    for k in ["explorer_keyword", "explorer_source", "explorer_category",
-              "explorer_sort", "explorer_score_range", "explorer_page"]:
-        if k in st.session_state:
-            del st.session_state[k]
-    st.rerun()
 
 # ── Map UI choices → query parameters ────────────────────────────────────────
 _SORT_MAP = {
