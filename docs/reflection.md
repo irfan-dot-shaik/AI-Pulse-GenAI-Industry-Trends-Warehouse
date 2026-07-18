@@ -19,7 +19,7 @@ Before this project, an analyst tracking the GenAI space would spend three to fi
 
 ### Architecture
 
-The system follows a medallion architecture with three layers:
+The system follows a medallion-inspired architecture with three layers: Raw, Staging, and Analytics.
 
 - **Raw layer** (`raw_ai_news`): Stores unprocessed articles exactly as received from each API, preserving a full audit trail.
 - **Staging layer** (`stg_ai_news`): Cleaned, deduplicated, and validated articles with all transformations applied.
@@ -45,7 +45,7 @@ The Streamlit frontend has seven pages:
 
 ### PostgreSQL
 
-Before this project, my experience with databases was limited to simple SELECT queries in academic exercises. During this project I learned to design a proper schema with foreign-key relationships and indexes, write analytical queries using window functions, aggregations, and CTEs, and think about query performance. The medallion architecture taught me that data reliability improves dramatically when you enforce validation before writing to the primary table rather than cleaning data after the fact.
+Before this project, my experience with databases was limited to simple SELECT queries in academic exercises. During this project I learned to design proper database schemas, unique constraints, indexing strategies, analytical SQL queries, and query optimization techniques. I also gained a deeper understanding of data warehouse design principles and why raw and staging layers should remain logically separated.
 
 ### SQLAlchemy
 
