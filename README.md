@@ -63,7 +63,7 @@ graph TD;
 ---
 
 ## 📸 Screenshots
-*(Note: Placeholder image paths. Replace with actual screenshots in GitHub repository)*
+
 - ![Dashboard Overview](docs/screenshots/overview.png)
 - ![Source Analytics](docs/screenshots/source_analytics.png)
 - ![News Explorer](docs/screenshots/news_explorer.png)
